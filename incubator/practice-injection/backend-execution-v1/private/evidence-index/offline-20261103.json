@@ -1,0 +1,35 @@
+{
+  "revision": "backend-execution-v1",
+  "scope": "offline calibration and application isolation, not model effectiveness",
+  "artifacts": [
+    {
+      "path": "E:\\loerlum-benchmark\\artifacts\\backend-execution\\calibration-20261103-r1.json",
+      "sha256": "7d3df36ab2ceec447e40ce1da749bd880ff386bad797b39ac09b8fb8c01887bf",
+      "planned": 102,
+      "calibration_passed": 94,
+      "status": "failed calibration; preserved",
+      "cause": "Eight reference/equivalent failures: private SQL percent parsing and missing control reconnect password; not Practice failures"
+    },
+    {
+      "path": "E:\\loerlum-benchmark\\artifacts\\backend-execution\\isolation-20261103-r1.json",
+      "sha256": "f1efcadd89d819eca4214abb19ca94a94d09aae19ae17c13a33a1190be0f6e71",
+      "status": "passed",
+      "checks": {
+        "real_host_canary_unreadable": true,
+        "docker_socket_absent": true,
+        "admin_credentials_absent": true,
+        "peer_database_network_denied": true,
+        "peer_host_ingress_denied": true,
+        "credential_catalog_denied": true,
+        "mounts_only_public": true,
+        "host_canary_unavailable": true,
+        "private_absent": true,
+        "admin_database_denied": true,
+        "external_network_denied": true,
+        "only_public_readonly_mount": true
+      }
+    }
+  ],
+  "model_effectiveness_attempts": 0,
+  "other_models_called": false
+}

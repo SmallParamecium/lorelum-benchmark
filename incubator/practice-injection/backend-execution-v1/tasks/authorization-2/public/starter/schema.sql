@@ -1,0 +1,1 @@
+CREATE TABLE documents(id integer PRIMARY KEY,owner text NOT NULL,body text NOT NULL,is_public boolean NOT NULL DEFAULT false,readers text[] NOT NULL DEFAULT '{}',writers text[] NOT NULL DEFAULT '{}');

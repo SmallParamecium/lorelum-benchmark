@@ -1,0 +1,1 @@
+CREATE TABLE projects(id integer PRIMARY KEY,tenant text NOT NULL,name text NOT NULL); CREATE TABLE children(id integer PRIMARY KEY,project_id integer REFERENCES projects(id),position integer NOT NULL,title text NOT NULL,UNIQUE(project_id,position));

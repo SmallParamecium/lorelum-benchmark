@@ -1,0 +1,1454 @@
+{
+  "revision": "backend-execution-v1",
+  "scope": "incubator exploration; no formal records or whole-Pack claim",
+  "model_policy": {
+    "only_model_id": "muse-spark-1.3",
+    "other_models_require_explicit_user_confirmation": true,
+    "immutable_model_version": null,
+    "status": "unavailable",
+    "no_alias_substitution": true
+  },
+  "conditions": {
+    "A": {
+      "delivery": "none"
+    },
+    "B": {
+      "delivery": "fixed relevant complete source text per family"
+    },
+    "C": {
+      "delivery": "semantic top-3 query/get complete content",
+      "status": "not-run",
+      "automatic_keyword_fallback": false
+    },
+    "D": {
+      "delivery": "fixed irrelevant complete source text",
+      "treatment": "irrelevant"
+    }
+  },
+  "system_prompt": "Implement the public task in app.py. Preserve server.py and its JSON envelope. Return the complete app.py as a single Python code block followed by a brief explanation. Treat supplied guidance as advisory, not as task-specific requirements. Do not assume access to private tests.",
+  "model_tools": [],
+  "budget": {
+    "wall_time_seconds": 300,
+    "output_format": "complete app.py Python code block; no tools"
+  },
+  "treatments": {
+    "unique": {
+      "source_pack": "backend-fundamentals@0.1.0",
+      "source_path": "practices\\data\\enforce-uniqueness-in-database.md",
+      "sha256": "5e8d8ca8826b2aab85633aed4cb43807403cb5c345f18a450d400ff7fc012cc2",
+      "text": "---\nanti_patterns:\n  - description: Treating an existence check as a uniqueness guarantee while concurrent requests or another writer can persist the same business key.\n    id: backend-fundamentals.data.check-then-insert-uniqueness\n    name: Check-then-insert uniqueness\n    severity: critical\napplies_when: a persisted business key must be unique and an insert, update, import, or migration could create competing rows\nid: backend-fundamentals.data.enforce-uniqueness-in-database\nseverity: critical\nstage: implementation\ntech_stack:\n  - postgresql\ntitle: Enforce Uniqueness in the Database\n---\n\n## When to apply\n\nApply when a persisted business key must be unique across every writer, such as one membership per\norganization and user. An earlier lookup can improve feedback but cannot reserve an absent row\nagainst a competing write.\n\n## Guidance\n\n1. Define the exact key and scope, including tenant or parent identity where appropriate. Preserve\n   the approved equality rules for case, normalization, soft deletion, and null values.\n2. Enforce that key with a named `UNIQUE` constraint or an appropriate unique expression or partial\n   index. Required components also need `NOT NULL`. PostgreSQL normally allows multiple nulls;\n   choose supported `NULLS NOT DISTINCT` semantics only when absent values must conflict.\n3. For existing data, resolve duplicates under an approved merge or retention decision, preserving\n   dependent references. Arrange enforcement so live writers cannot recreate duplicates during the\n   transition. Account for the deployed version's index-build and locking restrictions.\n4. Attempt the write and translate only the expected constraint violation into the agreed conflict\n   outcome. Preserve unrelated database failures. Use `ON CONFLICT` only when ignoring or updating\n   the existing row is the operation's actual contract, not as a generic duplicate repair.\n5. In PostgreSQL, a unique violation inside a transaction leaves that transaction aborted. Roll back\n   the transaction, or roll back to a savepoint established before the write, before executing more\n   SQL. Do not catch the error and query the existing row on the still-aborted transaction.\n\nStop when database enforcement covers every writer, existing records have a safe migration path,\nand concurrent attempts produce the defined outcome without duplicate records or invalid recovery SQL.\n\n## Anti-pattern\n\nTwo requests both find a workspace slug unused and then insert it. The endpoint trusts its check,\nand an import bypasses it altogether. Several rows now represent a supposedly unique slug.\n\n## Why\n\nDatabase uniqueness coordinates conflicting writes at insertion or update. A separate application\nobservation leaves a race and cannot constrain writers that do not use the same endpoint.\n\n## Exceptions and boundaries\n\nSimilar-looking fields need not be unique: repeated display names may be valid. Partial indexes must\nreflect the approved business rule, not invent soft-delete behavior. Partitioning and version limits\ncan constrain enforcement. Uniqueness does not make other writes atomic or prevent unrelated lost\nupdates.\n\n## Example\n\nMemberships require `org_id` and `user_id`, with a named unique constraint on their pair. Creation\nattempts the insert directly. If that constraint rejects a competing request, the transaction helper\nrolls back before the service returns the existing-membership outcome or performs a follow-up query.\nA violation of any other constraint remains an error, and imports obey the same database rule.\n",
+      "offline_token_counts": {
+        "O200kBase": 690,
+        "Cl100kBase": 680,
+        "ClaudeV3": 750,
+        "ClaudeV47": 1154,
+        "ClaudeV5": 1153,
+        "ClaudeV5Sonnet": 1153,
+        "Qwen3": 700,
+        "DeepSeekV3": 697,
+        "KimiK2": 682,
+        "Glm5": 680,
+        "Jev": 716
+      },
+      "muse_token_count": null
+    },
+    "event": {
+      "source_pack": "backend-fundamentals@0.1.0",
+      "source_path": "practices\\data\\commit-event-deduplication-with-effects.md",
+      "sha256": "c0648c0da8ef80013029a62f17092f3ac60fe9009ff2a8b8e2f6235d1e3322d5",
+      "text": "---\nanti_patterns:\n  - description: Committing an event marker separately from its local effect, or claiming an absent marker without uniqueness, allowing crashes or concurrent workers to lose or repeat work.\n    id: backend-fundamentals.data.detached-event-deduplication-marker\n    name: The event marker and effect have different commits\n    severity: critical\napplies_when: redelivered events can repeat non-idempotent business changes in one transactional database and the handler needs durable deduplication across workers and restarts\nid: backend-fundamentals.data.commit-event-deduplication-with-effects\nseverity: critical\nstage: implementation\ntech_stack:\n  - postgresql\ntitle: Commit Event Deduplication with Its Local Effects\n---\n\n## When to apply\n\nApply when redelivery, concurrent workers, restart, or lost acknowledgement could repeat a\nnon-idempotent local database effect. A completion marker must mean this consumer's effect committed,\nnot merely that a worker received the event.\n\n## Guidance\n\n1. Derive a stable event key from the authenticated source contract, with required provider,\n   environment, account or tenant scope and consumer identity where needed. Use non-null components\n   and immediate database uniqueness. A delivery-attempt ID, timestamp, or resource ID is not an\n   interchangeable event identity.\n2. In the effect's transaction, claim that exact key atomically, for example with PostgreSQL\n   `INSERT ... ON CONFLICT (source_scope, consumer, event_id) DO NOTHING RETURNING event_id`.\n   Only the transaction that inserted the marker performs the effect. A preliminary check or\n   `SELECT ... FOR UPDATE` on an absent row does not reserve it.\n3. Apply every covered local change through that same transaction and require its success conditions.\n   Commit marker and effect together; any processing failure rolls both back. Never commit an\n   in-progress marker first or add the marker after committing the effect.\n4. Treat only the exact retained-key conflict as the duplicate-success outcome. Concurrent inserts\n   wait for the competing transaction: its commit prevents another claim; its rollback leaves the\n   key available. Timeouts, aborts, and unrelated constraint failures remain failures. Acknowledge\n   completed work only after commit, not after an uncommitted observation or lock miss.\n5. Route replay and recovery through the same rule. Retain durable evidence across restarts for the\n   accepted redelivery horizon, including manual replay and backlog recovery. Before deleting older\n   markers, preserve equivalent protection or explicitly restrict those replay paths.\n\nStop when one scoped key permits at most one committed local effect, failed attempts leave no\ncompletion marker, and retained evidence protects redelivery after restart or lost acknowledgement.\n\n## Anti-pattern\n\nA worker commits a processed-event marker, then crashes before adding credits. Retry skips the\nmissing effect. Reversing those commits instead risks adding credits twice.\n\n## Why\n\nUniqueness coordinates competing claims; a shared transaction couples the winning claim to completed\nwork. Durable evidence then distinguishes committed processing from a failed attempt.\n\n## Exceptions and boundaries\n\nAn existing naturally idempotent operation or business constraint may already suffice. Different event\nIDs can still describe one business action; deduplication does not solve ordering or lost updates.\n\nOnly same-database effects are covered. Remote calls, another database, and broker acknowledgement\ndo not roll back with this transaction. Do not claim remote exactly-once delivery or hold a transaction\naround a network call as a substitute for the integration's actual idempotency contract.\n\n## Example\n\nA rewards consumer claims `(partner_account_scope, consumer, event_id)`, increments one account, and\ncommits both. A missing account rolls everything back. If commit succeeds but acknowledgement is lost,\nredelivery finds the retained marker and skips the increment, including after a worker restart.\n",
+      "offline_token_counts": {
+        "O200kBase": 779,
+        "Cl100kBase": 778,
+        "ClaudeV3": 868,
+        "ClaudeV47": 1309,
+        "ClaudeV5": 1308,
+        "ClaudeV5Sonnet": 1308,
+        "Qwen3": 800,
+        "DeepSeekV3": 805,
+        "KimiK2": 768,
+        "Glm5": 778,
+        "Jev": 815
+      },
+      "muse_token_count": null
+    },
+    "authorization": {
+      "source_pack": "backend-fundamentals@0.1.0",
+      "source_path": "practices\\security\\authorize-target-resource.md",
+      "sha256": "b8cda205bfa176812a475b3bf897053a754a609812c71667c56e3c3aed2750b7",
+      "text": "---\nanti_patterns:\n  - description: Treating a session, role, or resource ID as permission without applying the target's action and visibility policy.\n    id: backend-fundamentals.security.authenticated-means-authorized\n    name: A login check replaces resource permission\n    severity: critical\napplies_when: a caller reads, downloads, lists, or updates records selected by ID or tenant, and the target's permission or public/shared visibility must be checked rather than inferred from successful login\nid: backend-fundamentals.security.authorize-target-resource\nseverity: critical\nstage: implementation\ntech_stack:\n  - http\n  - security\ntitle: Authorize the Action on the Target Resource\n---\n\n## When to apply\n\nApply when an endpoint selects an object ID or tenant for a read, download, or update. Authentication can already be correct while a caller reaches another user's record. Anonymous public/shared requests still follow the target's visibility policy; do not require login everywhere.\n\n## Guidance\n\n1. Identify the subject, action, target, and tenant where applicable. Use verified identity when required; otherwise represent the anonymous caller explicitly. Resolve membership, grants, visibility, and resource attributes from authoritative state, not submitted ownership claims.\n2. Apply the actual allow rule and deny unmatched cases. It may permit public reads, sharing, ownership, delegated actions, or explicit cross-tenant access. Neither “logged in” nor “owner only” substitutes for that policy. Validate any sharing capability through the established mechanism.\n3. Bind data selection to that decision. Scope collections by permitted visibility and tenant; use a scoped lookup or load only policy inputs before releasing protected fields or changing state. Random IDs and tenant IDs in URLs are not permission.\n4. Cover alternate routes and every affected bulk target. Keep state-dependent permission and mutation consistent through the existing conditional write, transaction, or enforced data policy. A previous page view does not authorize a later change. Denials must not disclose protected data.\n\nStop when the intended policy controls data and effects on every supported path, including legitimate public or shared access. Reuse the existing authorization mechanism.\n\n## Anti-pattern\n\nA handler checks a session, then updates a document by primary key without checking tenant or edit permission. Changing the ID updates another tenant's document. Adding an owner-only condition still wrongly rejects explicitly shared editing grants.\n\n## Why\n\nA valid caller can lack permission for a particular action, while an anonymous caller can legitimately read public content. Connecting the action to authoritative target policy prevents identifier substitution without breaking intentional sharing.\n\n## Exceptions and boundaries\n\nSingle-tenant systems need no artificial tenant abstraction. A global role grants cross-tenant access only where policy says so. Mandatory database policies can own enforcement when application context cannot bypass them. Private helpers may reuse a still-valid decision rather than repeat it; entry authentication remains separate.\n\n## Example\n\nAn invoice endpoint permits anonymous downloads only for published public invoices. Private downloads require the invoice tenant's membership and a billing-read grant. A guessed ID never widens its query scope. An explicitly authorized accountant may read a shared invoice without owning it; a valid session alone cannot expose another customer's bill.\n",
+      "offline_token_counts": {
+        "O200kBase": 636,
+        "Cl100kBase": 636,
+        "ClaudeV3": 700,
+        "ClaudeV47": 1091,
+        "ClaudeV5": 1090,
+        "ClaudeV5Sonnet": 1090,
+        "Qwen3": 651,
+        "DeepSeekV3": 650,
+        "KimiK2": 635,
+        "Glm5": 636,
+        "Jev": 651
+      },
+      "muse_token_count": null
+    },
+    "relations": {
+      "source_pack": "backend-fundamentals@0.1.0",
+      "source_path": "practices\\data\\batch-required-relations.md",
+      "sha256": "d5c7666153cb65c06693ae81f610d9299668fcfa490cba43c1f80c138f5e4e01",
+      "text": "---\nanti_patterns:\n  - description: Fetching relations once per parent, preloading an unbounded graph, or dropping child access predicates merely to use a prefetched cache.\n    id: backend-fundamentals.data.per-row-relation-fetch\n    name: One related lookup per rendered row\n    severity: warn\napplies_when: implementing or changing a list, serializer, template, or batch operation that reads related records for multiple parent rows\nid: backend-fundamentals.data.batch-required-relations\nseverity: warn\nstage: implementation\ntech_stack:\n  - backend-fundamentals\ntitle: Batch the Relations the Result Actually Needs\n---\n\n## When to apply\n\nApply when rendering or processing several parents accesses related records for each one, including\nlookups hidden in serializers, templates, properties, and deferred fields. Improve the bounded\nresult's fetch plan without changing which records the consumer may receive.\n\n## Guidance\n\n1. Trace the actual consumer fields and relation accesses. Use the existing query-capture mechanism\n   to distinguish per-parent lookups from fixed overhead such as authentication or a page count.\n2. Establish the parent page or batch in the database, preserving filters, ordering, and limits.\n   Fetch related data only for those parents; do not materialize the whole collection before slicing.\n3. Join suitable single-valued relations and prefetch or bulk-load multi-valued relations. Preserve\n   every original child predicate, including tenant, viewer, visibility, and soft-delete conditions,\n   as well as ordering and required fields. A batching change must return equivalent results;\n   removing a filter to hit the cache is not an optimization.\n4. Match the consumer to that exact fetch shape. In Django, use explicit `select_related()` paths\n   and a filtered `Prefetch` with a named `to_attr` list where appropriate. Read that list rather\n   than calling a filtered manager again. Equivalent bulk queries must retain the same restrictions\n   when associating children with parents.\n5. Bound child volume too. Use an aggregate for a count or summary rather than loading every child;\n   preserve required child limits and continuation semantics without silently truncating output.\n   Compare the full consumer's results and retrieval growth with populated, filtered relations.\n\nStop when the bounded result is equivalent, its child access rules remain intact, and relation\nqueries no longer grow accidentally once per parent without replacing them with unbounded loading.\n\n## Anti-pattern\n\nA serializer filters comments by viewer visibility. Its replacement prefetch loads all comments and\nremoves that filter so the cache is used, reducing query count while exposing hidden records.\n\n## Why\n\nBatching removes repeated network and database work. It is useful only when the result stays correct;\nfewer queries do not compensate for changed access control, multiplied rows, or excessive memory.\n\n## Exceptions and boundaries\n\nA small conditional lookup may be cheaper left alone. Chunked jobs may issue a fixed query set per\nchunk, not per entire job. Separate prefetch queries do not guarantee a common snapshot; preserve\nexisting consistency requirements. No universal one-query target applies.\n\n## Example\n\nA paginated project list joins owners and prefetches its bounded active-reviewer subset into\n`visible_reviewers`, retaining the original tenant, viewer, visibility, and soft-delete predicates.\nThe serializer reads that list. It obtains unbounded comment counts through an aggregate, not comment\nbodies, so both the response and its access boundaries remain unchanged.\n",
+      "offline_token_counts": {
+        "O200kBase": 700,
+        "Cl100kBase": 693,
+        "ClaudeV3": 774,
+        "ClaudeV47": 1160,
+        "ClaudeV5": 1159,
+        "ClaudeV5Sonnet": 1159,
+        "Qwen3": 716,
+        "DeepSeekV3": 715,
+        "KimiK2": 690,
+        "Glm5": 693,
+        "Jev": 729
+      },
+      "muse_token_count": null
+    },
+    "cleanup": {
+      "source_pack": "backend-fundamentals@0.1.0",
+      "source_path": "practices\\data\\return-acquired-connections.md",
+      "sha256": "4b883583fa731136f76bf021acf1341b851f3c34899767d9d5e07b42ca2fb762",
+      "text": "---\nanti_patterns:\n  - description: Returning an acquired connection only on success, reusing a broken or unrolled-back client, or closing a shared pool while work still needs it.\n    id: backend-fundamentals.data.leaked-acquired-connection\n    name: Acquired connection has no safe return path\n    severity: warn\napplies_when: backend code explicitly acquires a database connection or changes its transaction or cleanup paths\nid: backend-fundamentals.data.return-acquired-connections\nseverity: warn\nstage: implementation\ntech_stack:\n  - postgresql\ntitle: Return Acquired Connections\n---\n\n## When to apply\n\nApply when code checks out a database client or changes the success, failure, early-return, or\ncancellation paths around that checkout. Decide who owns the client until it is safe to reuse or\nmust be discarded. Pool capacity planning is a separate decision.\n\n## Guidance\n\n1. Reuse the process's existing pool. Prefer its acquire-and-release helper for an independent query\n   when that helper provides the needed semantics; do not create a pool per request.\n2. After each successful checkout, establish one scoped cleanup path using the existing resource\n   API or `try`/`finally`. Cover success, exceptions, early returns, and cancellation. Keep all\n   statements in one transaction on that checked-out client.\n3. Commit completed transactions or roll back unfinished ones before returning the client. If rollback\n   fails or the driver reports a broken connection, discard it through the supported driver API;\n   never put unsafe transaction or connection state back into circulation.\n4. Hold the client only for work that requires it. An abandoned acquisition wait can still deliver a\n   client later: use the driver's cancellation mechanism or arrange cleanup for that late result.\n   A caller timing out does not itself return a connection.\n5. Return or discard individual clients after their work. Close the shared pool only through its\n   lifecycle owner after work using it has settled or stopped, not at an ordinary request's end.\n\nStop when every successful acquisition reaches a safe return or discard on every exit path, and\nshared-pool closure cannot run ahead of its users.\n\n## Anti-pattern\n\nAn insert throws before `release()`. Each failed request consumes another pool slot, so the proposed\nfix increases the pool maximum instead of repairing ownership.\n\n## Why\n\nA pool can reuse only the connections callers give back. Cleanup must also preserve reusable state;\nreturning an aborted transaction or broken client passes one request's failure to the next caller.\n\n## Exceptions and boundaries\n\nA short-lived maintenance command may own one direct connection and close it reliably without a pool.\nUse the deployed driver's rules for transaction errors, discard, cancellation, and session state.\nReliable release does not establish deployment capacity or bound acquisition waits; those belong to\nthe connection-budget decision.\n\n## Example\n\nA transaction helper acquires one client, commits after both writes succeed, and rolls back on\nfailure. Its `finally` returns the client unless rollback failed, in which case it discards it.\nThe request never calls `pool.end()`; the process closes that pool after its users drain.\n",
+      "offline_token_counts": {
+        "O200kBase": 640,
+        "Cl100kBase": 641,
+        "ClaudeV3": 710,
+        "ClaudeV47": 1026,
+        "ClaudeV5": 1025,
+        "ClaudeV5Sonnet": 1025,
+        "Qwen3": 663,
+        "DeepSeekV3": 657,
+        "KimiK2": 637,
+        "Glm5": 641,
+        "Jev": 660
+      },
+      "muse_token_count": null
+    },
+    "migration": {
+      "source_pack": "backend-fundamentals@0.1.0",
+      "source_path": "practices\\data\\retire-old-schema-after-callers.md",
+      "sha256": "52a7035c6d343d8f44f510d544af3c6e173dcf56d3c71ccd4c3f55d946c98964",
+      "text": "---\nanti_patterns:\n  - description: Removing or renaming a schema object because current source no longer references it while deployed callers or live writes still require the old contract.\n    id: backend-fundamentals.data.contract-schema-before-deployment\n    name: Contracting the schema before callers have moved\n    severity: critical\napplies_when: dropping, renaming, or replacing a database column or table used by deployed applications, workers, scripts, or integrations\nid: backend-fundamentals.data.retire-old-schema-after-callers\nseverity: critical\nstage: implementation\ntech_stack:\n  - postgresql\ntitle: Retire Old Schema After Its Callers\n---\n\n## When to apply\n\nApply when a migration removes an object or makes its old name unavailable. Even a data-preserving\nrename breaks an older binary's next query. Gate retirement on deployed readers, writers, and live\nmigration behavior, not just the current checkout.\n\n## Guidance\n\n1. Identify actual readers, writers, database dependencies, running versions, long-lived jobs, and\n   permitted rollback versions. Inspect generated SQL: an application-field rename may keep its\n   physical mapping, while a generated drop-and-add may destroy values rather than rename them.\n2. Choose a coordinated maintenance cutover only if every caller can stop. When versions overlap,\n   expand first and establish the authoritative value and how every live writer maintains the\n   replacement. Retire old-only writers or use a deliberate existing synchronization mechanism;\n   deploying one new writer does not upgrade the rest.\n3. Backfill through the existing migration process with bounded work and a concurrency rule that\n   preserves live edits. Do not copy values fetched earlier over newer writes. Establish historical\n   coverage and agreement with transition-time writes before switching readers; non-null replacement\n   rows alone do not prove correctness.\n4. Deploy readers and writers that no longer need the old object, including fallback reads. Gate\n   contraction on deployment inventory and relevant runtime evidence: old processes and jobs must be\n   gone, the backfill complete, and incompatible rollback versions excluded. A quiet interval does\n   not establish that an infrequent caller migrated.\n5. Apply contraction with reviewed dependencies and a live-workload lock plan. PostgreSQL\n   `ALTER TABLE` generally takes `ACCESS EXCLUSIVE` unless documented otherwise; metadata-only does\n   not mean nonblocking. Do not use `CASCADE` to bypass unexplained dependencies. Remove temporary\n   dual writes, fallback paths, and synchronization objects once their users are gone.\n\nStop before contraction if any deployed or supported rollback caller still needs the old object,\nor migration coverage and live-write consistency remain unestablished. Finish removal of temporary\ncompatibility paths once the gate is met.\n\n## Anti-pattern\n\nA release drops a populated column and adds its renamed replacement before old replicas finish.\nA true rename would preserve values but still break those replicas and the unmigrated nightly job.\n\n## Why\n\nSchema changes and application deployment are not atomic together. Replacement needs historical and\nongoing values; removal needs evidence that every supported caller has left the old contract.\n\n## Exceptions and boundaries\n\nA verified unused object may be dropped directly. A maintenance window stopping every reader and\nwriter can permit a coordinated data-preserving rename. A field mapped to the same physical column\nmay need no database rename. No universal dual-write mechanism is required. Recreating a dropped\ncolumn or reverting code does not restore lost values.\n\n## Example\n\nA shipment API and dispatch job move from `delivery_note` to `courier_note`. During overlap both\nwriters maintain both columns transactionally. After old-only writers leave, a row-locked backfill\ncopies current values. Readers switch after coverage and consistency checks; fully deployed callers\nthen remove old access. With incompatible rollback images excluded, contraction drops the old column\nand retires the temporary dual path.\n",
+      "offline_token_counts": {
+        "O200kBase": 786,
+        "Cl100kBase": 783,
+        "ClaudeV3": 884,
+        "ClaudeV47": 1322,
+        "ClaudeV5": 1321,
+        "ClaudeV5Sonnet": 1321,
+        "Qwen3": 803,
+        "DeepSeekV3": 818,
+        "KimiK2": 782,
+        "Glm5": 783,
+        "Jev": 819
+      },
+      "muse_token_count": null
+    },
+    "irrelevant": {
+      "source_pack": "backend-fundamentals@0.1.0",
+      "source_path": "practices\\security\\hash-passwords-for-storage.md",
+      "sha256": "abdd8e1446429e19e3a7579b9a90ec36ee978a017af0714d377f67044923b04c",
+      "text": "---\nanti_patterns:\n  - description: Storing login passwords as plaintext, reversible ciphertext, or fast digests instead of dedicated salted password verifiers.\n    id: backend-fundamentals.security.recoverable-or-fast-password-storage\n    name: Storing a recoverable or cheaply guessed password\n    severity: critical\napplies_when: creating, resetting, changing, or verifying locally managed login passwords\nid: backend-fundamentals.security.hash-passwords-for-storage\nseverity: critical\nstage: implementation\ntech_stack:\n  - security\ntitle: Store Passwords with a Dedicated Password Hash\n---\n\n## When to apply\n\nApply when the application owns login-password authentication. Store a verifier that supports authentication without retaining a recoverable password or making offline guesses cheap after database theft. Password strength, sessions, and resource permissions are separate decisions.\n\n## Guidance\n\n1. Establish ownership. If a trusted identity provider manages passwords, keep its supported identity linkage instead of collecting a second password copy. Do not introduce local password storage into an identity-provider-only application.\n2. Use a maintained high-level password-hashing library. Prefer Argon2id for new systems where supported; choose another dedicated algorithm only under applicable deployment or compliance constraints and current OWASP guidance. Never substitute a general-purpose digest or custom cryptographic construction.\n3. Let the library generate a secure random per-password salt and store its supported encoded verifier, including algorithm, salt, and cost parameters. Do not retain plaintext or a reversible copy for login or recovery. A fixed shared salt is insufficient.\n4. Select costs from a documented security baseline and assess deployment memory and expected authentication load. Retain the parameter source rather than copying unexplained iteration counts. Follow documented input limits without silently truncating passwords. Registration, reset, and change must use the same storage policy.\n5. Verify through the library's verification API; mismatches fail authentication. Do not generate a fresh salted hash and compare strings. Use the supported rehash check after successful verification to upgrade outdated verifiers under current policy, or the established reset path when migration is unsafe. Keep passwords and verifiers out of responses and logs.\n\nStop when every local password write stores only the supported verifier, login uses its verification API, and costs and upgrades have an explicit basis.\n\n## Anti-pattern\n\nRegistration stores `SHA256(password)` while reset encrypts the password for support recovery. One permits cheap offline guessing; the other exposes recoverable passwords if its key leaks. Adding a shared salt does not supply a dedicated adaptive verifier.\n\n## Why\n\nOffline guesses bypass online rate limits. Dedicated password hashes raise each guess's cost, while unique salts prevent reusing one computation across accounts. Encoded parameters support verification and later upgrades, but cannot make weak passwords unguessable.\n\n## Exceptions and boundaries\n\nSupported alternatives have different cost and input constraints: scrypt, legacy bcrypt, or FIPS-validated PBKDF2 cannot inherit Argon2id settings blindly. Existing weak hashes need migration or reset, not only safer registration. High-entropy tokens and recoverable integration secrets are different storage problems. An optional pepper does not replace salts or a dedicated hash.\n\n## Example\n\nA service uses `argon2-cffi`'s `PasswordHasher` with a documented deployment-appropriate profile. Registration and reset store `hash(password)`; login calls `verify(stored_hash, candidate)`. After success, `check_needs_rehash` selects upgrades. SSO-only accounts retain provider linkage without local passwords.\n",
+      "offline_token_counts": {
+        "O200kBase": 703,
+        "Cl100kBase": 704,
+        "ClaudeV3": 801,
+        "ClaudeV47": 1236,
+        "ClaudeV5": 1235,
+        "ClaudeV5Sonnet": 1235,
+        "Qwen3": 722,
+        "DeepSeekV3": 730,
+        "KimiK2": 698,
+        "Glm5": 704,
+        "Jev": 740
+      },
+      "muse_token_count": null
+    }
+  },
+  "length_control": {
+    "policy": "same unrelated password-storage Practice for all families, selected before responses; no padding with task hints",
+    "residual_confound": "Guidance token lengths differ; Muse tokenizer is unavailable. Offline encodings recorded as proxies, not claimed as Muse billing tokens."
+  },
+  "queries": {
+    "revision": "backend-execution-queries-2026-11-03-v1",
+    "source": "Public task contracts and starter behavior only; frozen before new retrieval",
+    "retrieval": {
+      "mode": "semantic",
+      "top_k": 3,
+      "automatic_keyword_fallback": false,
+      "status": "not-run",
+      "reason": "Only muse-spark-1.3 authorized; do not invoke a separate embedding model without resolving authorization"
+    },
+    "queries": [
+      {
+        "task": "unique-1",
+        "split": "development",
+        "query": "Two requests reserve the same team handle after each reports it unused. Both may reach the write together. Where should the service decide which reservation owns the handle while preserving errors for invalid account data?",
+        "expected": [
+          "backend-fundamentals.data.enforce-uniqueness-in-database"
+        ]
+      },
+      {
+        "task": "unique-2",
+        "split": "confirmation",
+        "query": "Email reservations arrive with different casing and surrounding spaces. Retries and simultaneous requests must identify one account, while unrelated addresses remain usable. How should the write path preserve that ownership rule?",
+        "expected": [
+          "backend-fundamentals.data.enforce-uniqueness-in-database"
+        ]
+      },
+      {
+        "task": "event-1",
+        "split": "development",
+        "query": "A purchase receipt is recorded as received before its local credit entry is written. After an interruption, redelivery is skipped and the customer has no credit. How should completion be recorded for this local operation?",
+        "expected": [
+          "backend-fundamentals.data.commit-event-deduplication-with-effects"
+        ]
+      },
+      {
+        "task": "event-2",
+        "split": "confirmation",
+        "query": "The refund consumer can receive the same receipt simultaneously, and a request may be cancelled between its bookkeeping steps. How should a retry distinguish completed work from an interrupted attempt without repeating the refund?",
+        "expected": [
+          "backend-fundamentals.data.commit-event-deduplication-with-effects"
+        ]
+      },
+      {
+        "task": "authorization-1",
+        "split": "development",
+        "query": "An authenticated editor submits several document IDs in one update. Documents can be private, public, or shared for reading or writing, and the batch must change nothing if any target is disallowed. Where should the handler decide which effects are permitted?",
+        "expected": [
+          "backend-fundamentals.security.authorize-target-resource"
+        ]
+      },
+      {
+        "task": "authorization-2",
+        "split": "confirmation",
+        "query": "The document endpoint supports delegated editors and public reading. A bulk request must update allowed items and report denied or missing items separately. How should it prevent someone else's document from being exposed or changed without breaking intentional sharing?",
+        "expected": [
+          "backend-fundamentals.security.authorize-target-resource"
+        ]
+      },
+      {
+        "task": "relations-1",
+        "split": "development",
+        "query": "The tenant overview fetches projects and then requests their child rows separately for each project. Its round trips exceed the supported overview budget. How can the data access change while keeping empty projects, ordering and every required child?",
+        "expected": [
+          "backend-fundamentals.data.batch-required-relations"
+        ]
+      },
+      {
+        "task": "relations-2",
+        "split": "confirmation",
+        "query": "A project overview includes a separate two-item child page for each project. Per-project reads are costly, but the continuation positions and tenant boundaries must remain correct. What fetch shape should this endpoint use?",
+        "expected": [
+          "backend-fundamentals.data.batch-required-relations"
+        ]
+      },
+      {
+        "task": "cleanup-1",
+        "split": "development",
+        "query": "The credit service borrows one of two database clients. Repeated interruptions while reading balances make later normal requests stop completing. How should request ownership end on both successful and failed work?",
+        "expected": [
+          "backend-fundamentals.data.return-acquired-connections"
+        ]
+      },
+      {
+        "task": "cleanup-2",
+        "split": "confirmation",
+        "query": "A prepaid-balance adjustment is cancelled after changing a row, or fails a storage check. Clients appear available afterward, yet later requests inherit inconsistent transaction state. How should the client become safe for the next request?",
+        "expected": [
+          "backend-fundamentals.data.return-acquired-connections"
+        ]
+      },
+      {
+        "task": "migration-1",
+        "split": "development",
+        "query": "The web fleet now reads display_name, but a scheduled exporter may still read legacy_name and some replacement values are missing. What evidence permits retiring the old field without interrupting the deployed service?",
+        "expected": [
+          "backend-fundamentals.data.retire-old-schema-after-callers"
+        ]
+      },
+      {
+        "task": "migration-2",
+        "split": "confirmation",
+        "query": "Workers have been upgraded or disabled, while operations can still promise rollback to an earlier release. The profile migration must eventually finish without losing newer edits. When can the old database field be removed?",
+        "expected": [
+          "backend-fundamentals.data.retire-old-schema-after-callers"
+        ]
+      }
+    ]
+  },
+  "planned_attempts": [
+    {
+      "task": "unique-1",
+      "split": "development",
+      "repeat": 1,
+      "condition": "A",
+      "attempt": "unique-1-1-A",
+      "split_run_order": 17
+    },
+    {
+      "task": "unique-1",
+      "split": "development",
+      "repeat": 1,
+      "condition": "B",
+      "attempt": "unique-1-1-B",
+      "split_run_order": 45
+    },
+    {
+      "task": "unique-1",
+      "split": "development",
+      "repeat": 1,
+      "condition": "C",
+      "attempt": "unique-1-1-C",
+      "split_run_order": 35
+    },
+    {
+      "task": "unique-1",
+      "split": "development",
+      "repeat": 1,
+      "condition": "D",
+      "attempt": "unique-1-1-D",
+      "split_run_order": 23
+    },
+    {
+      "task": "unique-1",
+      "split": "development",
+      "repeat": 2,
+      "condition": "A",
+      "attempt": "unique-1-2-A",
+      "split_run_order": 44
+    },
+    {
+      "task": "unique-1",
+      "split": "development",
+      "repeat": 2,
+      "condition": "B",
+      "attempt": "unique-1-2-B",
+      "split_run_order": 34
+    },
+    {
+      "task": "unique-1",
+      "split": "development",
+      "repeat": 2,
+      "condition": "C",
+      "attempt": "unique-1-2-C",
+      "split_run_order": 66
+    },
+    {
+      "task": "unique-1",
+      "split": "development",
+      "repeat": 2,
+      "condition": "D",
+      "attempt": "unique-1-2-D",
+      "split_run_order": 46
+    },
+    {
+      "task": "unique-1",
+      "split": "development",
+      "repeat": 3,
+      "condition": "A",
+      "attempt": "unique-1-3-A",
+      "split_run_order": 32
+    },
+    {
+      "task": "unique-1",
+      "split": "development",
+      "repeat": 3,
+      "condition": "B",
+      "attempt": "unique-1-3-B",
+      "split_run_order": 27
+    },
+    {
+      "task": "unique-1",
+      "split": "development",
+      "repeat": 3,
+      "condition": "C",
+      "attempt": "unique-1-3-C",
+      "split_run_order": 22
+    },
+    {
+      "task": "unique-1",
+      "split": "development",
+      "repeat": 3,
+      "condition": "D",
+      "attempt": "unique-1-3-D",
+      "split_run_order": 72
+    },
+    {
+      "task": "unique-2",
+      "split": "confirmation",
+      "repeat": 1,
+      "condition": "A",
+      "attempt": "unique-2-1-A",
+      "split_run_order": 17
+    },
+    {
+      "task": "unique-2",
+      "split": "confirmation",
+      "repeat": 1,
+      "condition": "B",
+      "attempt": "unique-2-1-B",
+      "split_run_order": 6
+    },
+    {
+      "task": "unique-2",
+      "split": "confirmation",
+      "repeat": 1,
+      "condition": "C",
+      "attempt": "unique-2-1-C",
+      "split_run_order": 9
+    },
+    {
+      "task": "unique-2",
+      "split": "confirmation",
+      "repeat": 1,
+      "condition": "D",
+      "attempt": "unique-2-1-D",
+      "split_run_order": 35
+    },
+    {
+      "task": "unique-2",
+      "split": "confirmation",
+      "repeat": 2,
+      "condition": "A",
+      "attempt": "unique-2-2-A",
+      "split_run_order": 42
+    },
+    {
+      "task": "unique-2",
+      "split": "confirmation",
+      "repeat": 2,
+      "condition": "B",
+      "attempt": "unique-2-2-B",
+      "split_run_order": 13
+    },
+    {
+      "task": "unique-2",
+      "split": "confirmation",
+      "repeat": 2,
+      "condition": "C",
+      "attempt": "unique-2-2-C",
+      "split_run_order": 64
+    },
+    {
+      "task": "unique-2",
+      "split": "confirmation",
+      "repeat": 2,
+      "condition": "D",
+      "attempt": "unique-2-2-D",
+      "split_run_order": 69
+    },
+    {
+      "task": "unique-2",
+      "split": "confirmation",
+      "repeat": 3,
+      "condition": "A",
+      "attempt": "unique-2-3-A",
+      "split_run_order": 21
+    },
+    {
+      "task": "unique-2",
+      "split": "confirmation",
+      "repeat": 3,
+      "condition": "B",
+      "attempt": "unique-2-3-B",
+      "split_run_order": 29
+    },
+    {
+      "task": "unique-2",
+      "split": "confirmation",
+      "repeat": 3,
+      "condition": "C",
+      "attempt": "unique-2-3-C",
+      "split_run_order": 24
+    },
+    {
+      "task": "unique-2",
+      "split": "confirmation",
+      "repeat": 3,
+      "condition": "D",
+      "attempt": "unique-2-3-D",
+      "split_run_order": 16
+    },
+    {
+      "task": "event-1",
+      "split": "development",
+      "repeat": 1,
+      "condition": "A",
+      "attempt": "event-1-1-A",
+      "split_run_order": 60
+    },
+    {
+      "task": "event-1",
+      "split": "development",
+      "repeat": 1,
+      "condition": "B",
+      "attempt": "event-1-1-B",
+      "split_run_order": 49
+    },
+    {
+      "task": "event-1",
+      "split": "development",
+      "repeat": 1,
+      "condition": "C",
+      "attempt": "event-1-1-C",
+      "split_run_order": 64
+    },
+    {
+      "task": "event-1",
+      "split": "development",
+      "repeat": 1,
+      "condition": "D",
+      "attempt": "event-1-1-D",
+      "split_run_order": 48
+    },
+    {
+      "task": "event-1",
+      "split": "development",
+      "repeat": 2,
+      "condition": "A",
+      "attempt": "event-1-2-A",
+      "split_run_order": 12
+    },
+    {
+      "task": "event-1",
+      "split": "development",
+      "repeat": 2,
+      "condition": "B",
+      "attempt": "event-1-2-B",
+      "split_run_order": 67
+    },
+    {
+      "task": "event-1",
+      "split": "development",
+      "repeat": 2,
+      "condition": "C",
+      "attempt": "event-1-2-C",
+      "split_run_order": 71
+    },
+    {
+      "task": "event-1",
+      "split": "development",
+      "repeat": 2,
+      "condition": "D",
+      "attempt": "event-1-2-D",
+      "split_run_order": 43
+    },
+    {
+      "task": "event-1",
+      "split": "development",
+      "repeat": 3,
+      "condition": "A",
+      "attempt": "event-1-3-A",
+      "split_run_order": 70
+    },
+    {
+      "task": "event-1",
+      "split": "development",
+      "repeat": 3,
+      "condition": "B",
+      "attempt": "event-1-3-B",
+      "split_run_order": 51
+    },
+    {
+      "task": "event-1",
+      "split": "development",
+      "repeat": 3,
+      "condition": "C",
+      "attempt": "event-1-3-C",
+      "split_run_order": 1
+    },
+    {
+      "task": "event-1",
+      "split": "development",
+      "repeat": 3,
+      "condition": "D",
+      "attempt": "event-1-3-D",
+      "split_run_order": 36
+    },
+    {
+      "task": "event-2",
+      "split": "confirmation",
+      "repeat": 1,
+      "condition": "A",
+      "attempt": "event-2-1-A",
+      "split_run_order": 14
+    },
+    {
+      "task": "event-2",
+      "split": "confirmation",
+      "repeat": 1,
+      "condition": "B",
+      "attempt": "event-2-1-B",
+      "split_run_order": 11
+    },
+    {
+      "task": "event-2",
+      "split": "confirmation",
+      "repeat": 1,
+      "condition": "C",
+      "attempt": "event-2-1-C",
+      "split_run_order": 56
+    },
+    {
+      "task": "event-2",
+      "split": "confirmation",
+      "repeat": 1,
+      "condition": "D",
+      "attempt": "event-2-1-D",
+      "split_run_order": 44
+    },
+    {
+      "task": "event-2",
+      "split": "confirmation",
+      "repeat": 2,
+      "condition": "A",
+      "attempt": "event-2-2-A",
+      "split_run_order": 72
+    },
+    {
+      "task": "event-2",
+      "split": "confirmation",
+      "repeat": 2,
+      "condition": "B",
+      "attempt": "event-2-2-B",
+      "split_run_order": 31
+    },
+    {
+      "task": "event-2",
+      "split": "confirmation",
+      "repeat": 2,
+      "condition": "C",
+      "attempt": "event-2-2-C",
+      "split_run_order": 30
+    },
+    {
+      "task": "event-2",
+      "split": "confirmation",
+      "repeat": 2,
+      "condition": "D",
+      "attempt": "event-2-2-D",
+      "split_run_order": 37
+    },
+    {
+      "task": "event-2",
+      "split": "confirmation",
+      "repeat": 3,
+      "condition": "A",
+      "attempt": "event-2-3-A",
+      "split_run_order": 52
+    },
+    {
+      "task": "event-2",
+      "split": "confirmation",
+      "repeat": 3,
+      "condition": "B",
+      "attempt": "event-2-3-B",
+      "split_run_order": 10
+    },
+    {
+      "task": "event-2",
+      "split": "confirmation",
+      "repeat": 3,
+      "condition": "C",
+      "attempt": "event-2-3-C",
+      "split_run_order": 71
+    },
+    {
+      "task": "event-2",
+      "split": "confirmation",
+      "repeat": 3,
+      "condition": "D",
+      "attempt": "event-2-3-D",
+      "split_run_order": 33
+    },
+    {
+      "task": "authorization-1",
+      "split": "development",
+      "repeat": 1,
+      "condition": "A",
+      "attempt": "authorization-1-1-A",
+      "split_run_order": 68
+    },
+    {
+      "task": "authorization-1",
+      "split": "development",
+      "repeat": 1,
+      "condition": "B",
+      "attempt": "authorization-1-1-B",
+      "split_run_order": 37
+    },
+    {
+      "task": "authorization-1",
+      "split": "development",
+      "repeat": 1,
+      "condition": "C",
+      "attempt": "authorization-1-1-C",
+      "split_run_order": 31
+    },
+    {
+      "task": "authorization-1",
+      "split": "development",
+      "repeat": 1,
+      "condition": "D",
+      "attempt": "authorization-1-1-D",
+      "split_run_order": 24
+    },
+    {
+      "task": "authorization-1",
+      "split": "development",
+      "repeat": 2,
+      "condition": "A",
+      "attempt": "authorization-1-2-A",
+      "split_run_order": 62
+    },
+    {
+      "task": "authorization-1",
+      "split": "development",
+      "repeat": 2,
+      "condition": "B",
+      "attempt": "authorization-1-2-B",
+      "split_run_order": 53
+    },
+    {
+      "task": "authorization-1",
+      "split": "development",
+      "repeat": 2,
+      "condition": "C",
+      "attempt": "authorization-1-2-C",
+      "split_run_order": 40
+    },
+    {
+      "task": "authorization-1",
+      "split": "development",
+      "repeat": 2,
+      "condition": "D",
+      "attempt": "authorization-1-2-D",
+      "split_run_order": 33
+    },
+    {
+      "task": "authorization-1",
+      "split": "development",
+      "repeat": 3,
+      "condition": "A",
+      "attempt": "authorization-1-3-A",
+      "split_run_order": 65
+    },
+    {
+      "task": "authorization-1",
+      "split": "development",
+      "repeat": 3,
+      "condition": "B",
+      "attempt": "authorization-1-3-B",
+      "split_run_order": 47
+    },
+    {
+      "task": "authorization-1",
+      "split": "development",
+      "repeat": 3,
+      "condition": "C",
+      "attempt": "authorization-1-3-C",
+      "split_run_order": 15
+    },
+    {
+      "task": "authorization-1",
+      "split": "development",
+      "repeat": 3,
+      "condition": "D",
+      "attempt": "authorization-1-3-D",
+      "split_run_order": 4
+    },
+    {
+      "task": "authorization-2",
+      "split": "confirmation",
+      "repeat": 1,
+      "condition": "A",
+      "attempt": "authorization-2-1-A",
+      "split_run_order": 25
+    },
+    {
+      "task": "authorization-2",
+      "split": "confirmation",
+      "repeat": 1,
+      "condition": "B",
+      "attempt": "authorization-2-1-B",
+      "split_run_order": 36
+    },
+    {
+      "task": "authorization-2",
+      "split": "confirmation",
+      "repeat": 1,
+      "condition": "C",
+      "attempt": "authorization-2-1-C",
+      "split_run_order": 45
+    },
+    {
+      "task": "authorization-2",
+      "split": "confirmation",
+      "repeat": 1,
+      "condition": "D",
+      "attempt": "authorization-2-1-D",
+      "split_run_order": 67
+    },
+    {
+      "task": "authorization-2",
+      "split": "confirmation",
+      "repeat": 2,
+      "condition": "A",
+      "attempt": "authorization-2-2-A",
+      "split_run_order": 50
+    },
+    {
+      "task": "authorization-2",
+      "split": "confirmation",
+      "repeat": 2,
+      "condition": "B",
+      "attempt": "authorization-2-2-B",
+      "split_run_order": 12
+    },
+    {
+      "task": "authorization-2",
+      "split": "confirmation",
+      "repeat": 2,
+      "condition": "C",
+      "attempt": "authorization-2-2-C",
+      "split_run_order": 43
+    },
+    {
+      "task": "authorization-2",
+      "split": "confirmation",
+      "repeat": 2,
+      "condition": "D",
+      "attempt": "authorization-2-2-D",
+      "split_run_order": 48
+    },
+    {
+      "task": "authorization-2",
+      "split": "confirmation",
+      "repeat": 3,
+      "condition": "A",
+      "attempt": "authorization-2-3-A",
+      "split_run_order": 32
+    },
+    {
+      "task": "authorization-2",
+      "split": "confirmation",
+      "repeat": 3,
+      "condition": "B",
+      "attempt": "authorization-2-3-B",
+      "split_run_order": 19
+    },
+    {
+      "task": "authorization-2",
+      "split": "confirmation",
+      "repeat": 3,
+      "condition": "C",
+      "attempt": "authorization-2-3-C",
+      "split_run_order": 41
+    },
+    {
+      "task": "authorization-2",
+      "split": "confirmation",
+      "repeat": 3,
+      "condition": "D",
+      "attempt": "authorization-2-3-D",
+      "split_run_order": 8
+    },
+    {
+      "task": "relations-1",
+      "split": "development",
+      "repeat": 1,
+      "condition": "A",
+      "attempt": "relations-1-1-A",
+      "split_run_order": 30
+    },
+    {
+      "task": "relations-1",
+      "split": "development",
+      "repeat": 1,
+      "condition": "B",
+      "attempt": "relations-1-1-B",
+      "split_run_order": 19
+    },
+    {
+      "task": "relations-1",
+      "split": "development",
+      "repeat": 1,
+      "condition": "C",
+      "attempt": "relations-1-1-C",
+      "split_run_order": 11
+    },
+    {
+      "task": "relations-1",
+      "split": "development",
+      "repeat": 1,
+      "condition": "D",
+      "attempt": "relations-1-1-D",
+      "split_run_order": 2
+    },
+    {
+      "task": "relations-1",
+      "split": "development",
+      "repeat": 2,
+      "condition": "A",
+      "attempt": "relations-1-2-A",
+      "split_run_order": 6
+    },
+    {
+      "task": "relations-1",
+      "split": "development",
+      "repeat": 2,
+      "condition": "B",
+      "attempt": "relations-1-2-B",
+      "split_run_order": 58
+    },
+    {
+      "task": "relations-1",
+      "split": "development",
+      "repeat": 2,
+      "condition": "C",
+      "attempt": "relations-1-2-C",
+      "split_run_order": 7
+    },
+    {
+      "task": "relations-1",
+      "split": "development",
+      "repeat": 2,
+      "condition": "D",
+      "attempt": "relations-1-2-D",
+      "split_run_order": 5
+    },
+    {
+      "task": "relations-1",
+      "split": "development",
+      "repeat": 3,
+      "condition": "A",
+      "attempt": "relations-1-3-A",
+      "split_run_order": 25
+    },
+    {
+      "task": "relations-1",
+      "split": "development",
+      "repeat": 3,
+      "condition": "B",
+      "attempt": "relations-1-3-B",
+      "split_run_order": 38
+    },
+    {
+      "task": "relations-1",
+      "split": "development",
+      "repeat": 3,
+      "condition": "C",
+      "attempt": "relations-1-3-C",
+      "split_run_order": 41
+    },
+    {
+      "task": "relations-1",
+      "split": "development",
+      "repeat": 3,
+      "condition": "D",
+      "attempt": "relations-1-3-D",
+      "split_run_order": 52
+    },
+    {
+      "task": "relations-2",
+      "split": "confirmation",
+      "repeat": 1,
+      "condition": "A",
+      "attempt": "relations-2-1-A",
+      "split_run_order": 51
+    },
+    {
+      "task": "relations-2",
+      "split": "confirmation",
+      "repeat": 1,
+      "condition": "B",
+      "attempt": "relations-2-1-B",
+      "split_run_order": 58
+    },
+    {
+      "task": "relations-2",
+      "split": "confirmation",
+      "repeat": 1,
+      "condition": "C",
+      "attempt": "relations-2-1-C",
+      "split_run_order": 1
+    },
+    {
+      "task": "relations-2",
+      "split": "confirmation",
+      "repeat": 1,
+      "condition": "D",
+      "attempt": "relations-2-1-D",
+      "split_run_order": 3
+    },
+    {
+      "task": "relations-2",
+      "split": "confirmation",
+      "repeat": 2,
+      "condition": "A",
+      "attempt": "relations-2-2-A",
+      "split_run_order": 55
+    },
+    {
+      "task": "relations-2",
+      "split": "confirmation",
+      "repeat": 2,
+      "condition": "B",
+      "attempt": "relations-2-2-B",
+      "split_run_order": 18
+    },
+    {
+      "task": "relations-2",
+      "split": "confirmation",
+      "repeat": 2,
+      "condition": "C",
+      "attempt": "relations-2-2-C",
+      "split_run_order": 70
+    },
+    {
+      "task": "relations-2",
+      "split": "confirmation",
+      "repeat": 2,
+      "condition": "D",
+      "attempt": "relations-2-2-D",
+      "split_run_order": 23
+    },
+    {
+      "task": "relations-2",
+      "split": "confirmation",
+      "repeat": 3,
+      "condition": "A",
+      "attempt": "relations-2-3-A",
+      "split_run_order": 27
+    },
+    {
+      "task": "relations-2",
+      "split": "confirmation",
+      "repeat": 3,
+      "condition": "B",
+      "attempt": "relations-2-3-B",
+      "split_run_order": 54
+    },
+    {
+      "task": "relations-2",
+      "split": "confirmation",
+      "repeat": 3,
+      "condition": "C",
+      "attempt": "relations-2-3-C",
+      "split_run_order": 22
+    },
+    {
+      "task": "relations-2",
+      "split": "confirmation",
+      "repeat": 3,
+      "condition": "D",
+      "attempt": "relations-2-3-D",
+      "split_run_order": 53
+    },
+    {
+      "task": "cleanup-1",
+      "split": "development",
+      "repeat": 1,
+      "condition": "A",
+      "attempt": "cleanup-1-1-A",
+      "split_run_order": 61
+    },
+    {
+      "task": "cleanup-1",
+      "split": "development",
+      "repeat": 1,
+      "condition": "B",
+      "attempt": "cleanup-1-1-B",
+      "split_run_order": 10
+    },
+    {
+      "task": "cleanup-1",
+      "split": "development",
+      "repeat": 1,
+      "condition": "C",
+      "attempt": "cleanup-1-1-C",
+      "split_run_order": 3
+    },
+    {
+      "task": "cleanup-1",
+      "split": "development",
+      "repeat": 1,
+      "condition": "D",
+      "attempt": "cleanup-1-1-D",
+      "split_run_order": 18
+    },
+    {
+      "task": "cleanup-1",
+      "split": "development",
+      "repeat": 2,
+      "condition": "A",
+      "attempt": "cleanup-1-2-A",
+      "split_run_order": 50
+    },
+    {
+      "task": "cleanup-1",
+      "split": "development",
+      "repeat": 2,
+      "condition": "B",
+      "attempt": "cleanup-1-2-B",
+      "split_run_order": 8
+    },
+    {
+      "task": "cleanup-1",
+      "split": "development",
+      "repeat": 2,
+      "condition": "C",
+      "attempt": "cleanup-1-2-C",
+      "split_run_order": 54
+    },
+    {
+      "task": "cleanup-1",
+      "split": "development",
+      "repeat": 2,
+      "condition": "D",
+      "attempt": "cleanup-1-2-D",
+      "split_run_order": 14
+    },
+    {
+      "task": "cleanup-1",
+      "split": "development",
+      "repeat": 3,
+      "condition": "A",
+      "attempt": "cleanup-1-3-A",
+      "split_run_order": 26
+    },
+    {
+      "task": "cleanup-1",
+      "split": "development",
+      "repeat": 3,
+      "condition": "B",
+      "attempt": "cleanup-1-3-B",
+      "split_run_order": 20
+    },
+    {
+      "task": "cleanup-1",
+      "split": "development",
+      "repeat": 3,
+      "condition": "C",
+      "attempt": "cleanup-1-3-C",
+      "split_run_order": 55
+    },
+    {
+      "task": "cleanup-1",
+      "split": "development",
+      "repeat": 3,
+      "condition": "D",
+      "attempt": "cleanup-1-3-D",
+      "split_run_order": 13
+    },
+    {
+      "task": "cleanup-2",
+      "split": "confirmation",
+      "repeat": 1,
+      "condition": "A",
+      "attempt": "cleanup-2-1-A",
+      "split_run_order": 15
+    },
+    {
+      "task": "cleanup-2",
+      "split": "confirmation",
+      "repeat": 1,
+      "condition": "B",
+      "attempt": "cleanup-2-1-B",
+      "split_run_order": 4
+    },
+    {
+      "task": "cleanup-2",
+      "split": "confirmation",
+      "repeat": 1,
+      "condition": "C",
+      "attempt": "cleanup-2-1-C",
+      "split_run_order": 60
+    },
+    {
+      "task": "cleanup-2",
+      "split": "confirmation",
+      "repeat": 1,
+      "condition": "D",
+      "attempt": "cleanup-2-1-D",
+      "split_run_order": 34
+    },
+    {
+      "task": "cleanup-2",
+      "split": "confirmation",
+      "repeat": 2,
+      "condition": "A",
+      "attempt": "cleanup-2-2-A",
+      "split_run_order": 7
+    },
+    {
+      "task": "cleanup-2",
+      "split": "confirmation",
+      "repeat": 2,
+      "condition": "B",
+      "attempt": "cleanup-2-2-B",
+      "split_run_order": 49
+    },
+    {
+      "task": "cleanup-2",
+      "split": "confirmation",
+      "repeat": 2,
+      "condition": "C",
+      "attempt": "cleanup-2-2-C",
+      "split_run_order": 65
+    },
+    {
+      "task": "cleanup-2",
+      "split": "confirmation",
+      "repeat": 2,
+      "condition": "D",
+      "attempt": "cleanup-2-2-D",
+      "split_run_order": 5
+    },
+    {
+      "task": "cleanup-2",
+      "split": "confirmation",
+      "repeat": 3,
+      "condition": "A",
+      "attempt": "cleanup-2-3-A",
+      "split_run_order": 59
+    },
+    {
+      "task": "cleanup-2",
+      "split": "confirmation",
+      "repeat": 3,
+      "condition": "B",
+      "attempt": "cleanup-2-3-B",
+      "split_run_order": 47
+    },
+    {
+      "task": "cleanup-2",
+      "split": "confirmation",
+      "repeat": 3,
+      "condition": "C",
+      "attempt": "cleanup-2-3-C",
+      "split_run_order": 57
+    },
+    {
+      "task": "cleanup-2",
+      "split": "confirmation",
+      "repeat": 3,
+      "condition": "D",
+      "attempt": "cleanup-2-3-D",
+      "split_run_order": 28
+    },
+    {
+      "task": "migration-1",
+      "split": "development",
+      "repeat": 1,
+      "condition": "A",
+      "attempt": "migration-1-1-A",
+      "split_run_order": 42
+    },
+    {
+      "task": "migration-1",
+      "split": "development",
+      "repeat": 1,
+      "condition": "B",
+      "attempt": "migration-1-1-B",
+      "split_run_order": 21
+    },
+    {
+      "task": "migration-1",
+      "split": "development",
+      "repeat": 1,
+      "condition": "C",
+      "attempt": "migration-1-1-C",
+      "split_run_order": 56
+    },
+    {
+      "task": "migration-1",
+      "split": "development",
+      "repeat": 1,
+      "condition": "D",
+      "attempt": "migration-1-1-D",
+      "split_run_order": 39
+    },
+    {
+      "task": "migration-1",
+      "split": "development",
+      "repeat": 2,
+      "condition": "A",
+      "attempt": "migration-1-2-A",
+      "split_run_order": 57
+    },
+    {
+      "task": "migration-1",
+      "split": "development",
+      "repeat": 2,
+      "condition": "B",
+      "attempt": "migration-1-2-B",
+      "split_run_order": 29
+    },
+    {
+      "task": "migration-1",
+      "split": "development",
+      "repeat": 2,
+      "condition": "C",
+      "attempt": "migration-1-2-C",
+      "split_run_order": 16
+    },
+    {
+      "task": "migration-1",
+      "split": "development",
+      "repeat": 2,
+      "condition": "D",
+      "attempt": "migration-1-2-D",
+      "split_run_order": 9
+    },
+    {
+      "task": "migration-1",
+      "split": "development",
+      "repeat": 3,
+      "condition": "A",
+      "attempt": "migration-1-3-A",
+      "split_run_order": 59
+    },
+    {
+      "task": "migration-1",
+      "split": "development",
+      "repeat": 3,
+      "condition": "B",
+      "attempt": "migration-1-3-B",
+      "split_run_order": 69
+    },
+    {
+      "task": "migration-1",
+      "split": "development",
+      "repeat": 3,
+      "condition": "C",
+      "attempt": "migration-1-3-C",
+      "split_run_order": 28
+    },
+    {
+      "task": "migration-1",
+      "split": "development",
+      "repeat": 3,
+      "condition": "D",
+      "attempt": "migration-1-3-D",
+      "split_run_order": 63
+    },
+    {
+      "task": "migration-2",
+      "split": "confirmation",
+      "repeat": 1,
+      "condition": "A",
+      "attempt": "migration-2-1-A",
+      "split_run_order": 20
+    },
+    {
+      "task": "migration-2",
+      "split": "confirmation",
+      "repeat": 1,
+      "condition": "B",
+      "attempt": "migration-2-1-B",
+      "split_run_order": 46
+    },
+    {
+      "task": "migration-2",
+      "split": "confirmation",
+      "repeat": 1,
+      "condition": "C",
+      "attempt": "migration-2-1-C",
+      "split_run_order": 63
+    },
+    {
+      "task": "migration-2",
+      "split": "confirmation",
+      "repeat": 1,
+      "condition": "D",
+      "attempt": "migration-2-1-D",
+      "split_run_order": 40
+    },
+    {
+      "task": "migration-2",
+      "split": "confirmation",
+      "repeat": 2,
+      "condition": "A",
+      "attempt": "migration-2-2-A",
+      "split_run_order": 38
+    },
+    {
+      "task": "migration-2",
+      "split": "confirmation",
+      "repeat": 2,
+      "condition": "B",
+      "attempt": "migration-2-2-B",
+      "split_run_order": 62
+    },
+    {
+      "task": "migration-2",
+      "split": "confirmation",
+      "repeat": 2,
+      "condition": "C",
+      "attempt": "migration-2-2-C",
+      "split_run_order": 2
+    },
+    {
+      "task": "migration-2",
+      "split": "confirmation",
+      "repeat": 2,
+      "condition": "D",
+      "attempt": "migration-2-2-D",
+      "split_run_order": 39
+    },
+    {
+      "task": "migration-2",
+      "split": "confirmation",
+      "repeat": 3,
+      "condition": "A",
+      "attempt": "migration-2-3-A",
+      "split_run_order": 68
+    },
+    {
+      "task": "migration-2",
+      "split": "confirmation",
+      "repeat": 3,
+      "condition": "B",
+      "attempt": "migration-2-3-B",
+      "split_run_order": 26
+    },
+    {
+      "task": "migration-2",
+      "split": "confirmation",
+      "repeat": 3,
+      "condition": "C",
+      "attempt": "migration-2-3-C",
+      "split_run_order": 66
+    },
+    {
+      "task": "migration-2",
+      "split": "confirmation",
+      "repeat": 3,
+      "condition": "D",
+      "attempt": "migration-2-3-D",
+      "split_run_order": 61
+    }
+  ],
+  "sampling_seed": null,
+  "randomization_seed": 20261103,
+  "planned_denominator": 144,
+  "performed_effectiveness_attempts": 0,
+  "evaluator_receives_conditions": false,
+  "calibration_gates": [
+    "reference and equivalent pass each task",
+    "starter and every targeted mutation fail appropriate behavior",
+    "real-canary and cross-attempt isolation audit passes"
+  ],
+  "version_policy": "New snapshot/evaluator/treatment revision after any recorded model result; preserve all failed infrastructure attempts."
+}

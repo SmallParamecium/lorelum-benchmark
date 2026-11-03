@@ -21,3 +21,7 @@
 ## Implementation gate
 
 初始 PR 仅 OpenSpec；strict validation 后向用户展示范围、预期、验证、非目标并获确认才开始实现。确认不包含其他模型授权。任务校准与隔离未通过前不运行成效模型。最终按仓库规定执行验证与双轮独立审查；未获模型审查授权不得调用其他模型来审查。
+
+## Approval
+
+用户在初始 PR #241 和 strict validation 完成后明确选择“确认实施”。决定已回写 Issue #240：允许先实现和离线校准，模型仅 muse-spark-1.3，路由不可用时不替代；不创建正式记录或升级 suite。

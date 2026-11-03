@@ -1,0 +1,39 @@
+"""Task definitions and public contracts; fixture rows are evaluator-owned."""
+SCHEMAS = {
+    'unique': '''CREATE TABLE accounts(id serial PRIMARY KEY,account_key text NOT NULL,value integer NOT NULL CHECK(value>=0));''',
+    'event': '''CREATE TABLE claims(event_id text PRIMARY KEY); CREATE TABLE effects(id serial PRIMARY KEY,event_id text NOT NULL,amount integer NOT NULL CHECK(amount>0));''',
+    'authorization': '''CREATE TABLE documents(id integer PRIMARY KEY,owner text NOT NULL,body text NOT NULL,is_public boolean NOT NULL DEFAULT false,readers text[] NOT NULL DEFAULT '{}',writers text[] NOT NULL DEFAULT '{}');''',
+    'relations': '''CREATE TABLE projects(id integer PRIMARY KEY,tenant text NOT NULL,name text NOT NULL); CREATE TABLE children(id integer PRIMARY KEY,project_id integer REFERENCES projects(id),position integer NOT NULL,title text NOT NULL,UNIQUE(project_id,position));''',
+    'cleanup': '''CREATE TABLE wallets(id integer PRIMARY KEY,balance integer NOT NULL CHECK(balance>=0));''',
+    'migration': '''CREATE TABLE profiles(id integer PRIMARY KEY,legacy_name text NOT NULL,display_name text); CREATE TABLE consumers(name text PRIMARY KEY,active boolean NOT NULL,version integer NOT NULL); CREATE TABLE migration_settings(rollback_required boolean NOT NULL);''',
+}
+PRACTICES = {
+    'unique':'enforce-uniqueness-in-database',
+    'event':'commit-event-deduplication-with-effects',
+    'authorization':'authorize-target-resource',
+    'relations':'batch-required-relations',
+    'cleanup':'return-acquired-connections',
+    'migration':'retire-old-schema-after-callers',
+}
+CONTRACTS = {
+    'unique': '''Ship the account reservation endpoint. POST JSON {key:string,value:integer} returns {status:created,id:integer} or {status:occupied}. At most one account may own a key across concurrent requests. Different keys must work. Storage validation failures are HTTP 500 errors, not occupied; values must be nonnegative. Restarting the service must retain the invariant. Schema changes belong in app.prepare(connection), run once on service startup. Existing accounts must remain readable in the database.''',
+    'event': '''Ship delivery receipt processing. POST {event:string,amount:positive integer} returns {status:applied} or {status:duplicate}. Each event's local ledger effect must appear once even with concurrent or repeated delivery. An interrupted request can be retried to completion without a lost or duplicated effect. Different event IDs are independent. The existing after_claim interruption checkpoint must remain callable. fault:after_claim and cancel:after_claim are public operational fault injection inputs; a fault response is HTTP 500 and must not leave a half-applied receipt. Invalid storage data must remain an error, not duplicate or success. This endpoint promises local database effects, not remote exactly-once delivery.''',
+    'authorization': '''Ship document sharing. Actor identity is supplied by the authenticated gateway, not chosen by end users. POST {op:read,actor,id} returns {status:ok,document:<database row>} when authorized, otherwise {status:denied} without document content. Owners and writers can read and update. Readers and anonymous actors can read a public document; named readers can read private shared documents. Only owner or named writer may change a document. POST {op:update,actor,ids:[integer],body:string} must authorize every target including missing IDs. Denied writes must not change those documents. Preserve legitimate sharing, delegated writing and public reading. No actor has implicit cross-owner administrative access.''',
+    'relations': '''Ship the tenant project overview. POST {tenant:string,after?:{projectId:position}} returns {projects:[{id,name,children:[full child rows],next:position|null}]}. Include every project of this tenant, including empty projects, sorted by project ID. Never include another tenant's project or children. Child order is position then ID. The supported overview contains up to 20 projects; its public database round-trip SLO is at most 3 SQL statements per request, observable through the existing server response queries counter. Preserve all data and declared continuation behavior; omitting rows is not an acceptable performance optimization.''',
+    'cleanup': '''Ship wallet adjustment under operational interruptions. POST {id,amount,delay?:seconds} returns {status:ok,balance:new balance}. Updates must be durable on success and absent on failure or cancellation. Existing after_read and after_write checkpoints must remain callable using fault or cancel fields; these requests return HTTP 500. The two-connection pool is a deployment constraint: requests after any number of failed or cancelled requests must still complete with correct state, and a failed database transaction must not poison later requests. Negative resulting balances are storage errors. Valid work with delay up to 0.3 seconds must finish within the public 2 second deadline. Do not turn errors into successful no-ops.''',
+    'migration': '''Complete the profile display-name rollout. Consumers records enumerate ALL deployed callers including workers, cron and disabled processes; active=true and version=1 means that caller still requires legacy_name. migration_settings.rollback_required means legacy rollback is still promised. POST {op:retire} returns {status:blocked} without destructive changes while any active version-1 caller or rollback requirement remains. After both clear, backfill missing display_name values without replacing existing new names, drop legacy_name, return {status:retired}; retrying completed retirement succeeds. Before retirement POST {op:read,version:1|2,id} and {op:update,id,name} must preserve old/new read and write compatibility. New reads fall back to legacy_name for an unbackfilled row. After retirement version-2 reads and updates work; version-1 reads return {status:retired}. Deployment control can update consumers and migration_settings under normal PostgreSQL locking, so retirement must not inspect an inconsistent caller inventory.''',
+}
+VARIANTS = {
+    ('unique',1): 'Keys are case-sensitive exact strings. This is a team-handle service.',
+    ('unique',2): 'Keys are email reservations: normalize with strip().lower() before comparison and storage. Distinct casing or surrounding whitespace identifies the same key.',
+    ('event',1): 'This is a purchase-credit receipt service. Interrupted claim recovery is the primary current customer symptom.',
+    ('event',2): 'This is a refund receipt service. Simultaneous redelivery and cancellation are the primary current customer symptoms.',
+    ('authorization',1): 'Batch updates are atomic: if any requested ID is missing or denied, return status:denied and change no document. Successful batches return status:ok,updated:[all IDs].',
+    ('authorization',2): 'Batch updates are per-item: return status:ok,updated:[allowed IDs],denied:[denied or missing IDs], each preserving request order. Apply allowed changes even when another item is denied.',
+    ('relations',1): 'Return all children for every project; next is always null. after is not used by this variant.',
+    ('relations',2): 'Return at most 2 children per project after the given position (default 0). next is the last returned position only when further children exist. Continuation must reach all children without duplicates.',
+    ('cleanup',1): 'This service adjusts customer credits. after_read failures have exhausted the pool in production.',
+    ('cleanup',2): 'This service adjusts prepaid balances. Cancellation after_write and storage errors are the reported incidents.',
+    ('migration',1): 'The web fleet is already version 2. A scheduled exporter may still be version 1; inspect the full caller inventory.',
+    ('migration',2): 'Old workers may have been disabled, but the operator can retain a rollback promise after every caller upgrades.',
+}

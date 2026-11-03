@@ -1,0 +1,2334 @@
+{
+  "scope": "Offline evaluator calibration; NOT no-Practice/with-Practice model effectiveness",
+  "snapshot_id": "86acde3b3fc8c1980bf8dc1f690f42e14850ea6262257aea049a312387715be3",
+  "final_calibration": {
+    "planned": 103,
+    "passed": 103,
+    "correct_implementations_passed": 24,
+    "starters_rejected": 12,
+    "behavior_mutations_rejected": 66,
+    "quality_only_counterexamples": 1,
+    "tasks": {
+      "unique": {
+        "calibration_checks": 13,
+        "starters_rejected": 2,
+        "correct_implementations_passed": 4,
+        "behavior_mutations_rejected": 7
+      },
+      "event": {
+        "calibration_checks": 16,
+        "starters_rejected": 2,
+        "correct_implementations_passed": 4,
+        "behavior_mutations_rejected": 10
+      },
+      "authorization": {
+        "calibration_checks": 20,
+        "starters_rejected": 2,
+        "correct_implementations_passed": 4,
+        "behavior_mutations_rejected": 14
+      },
+      "relations": {
+        "calibration_checks": 16,
+        "starters_rejected": 2,
+        "correct_implementations_passed": 4,
+        "behavior_mutations_rejected": 9,
+        "quality_only_counterexamples": 1
+      },
+      "cleanup": {
+        "calibration_checks": 16,
+        "correct_implementations_passed": 4,
+        "starters_rejected": 2,
+        "behavior_mutations_rejected": 10
+      },
+      "migration": {
+        "calibration_checks": 22,
+        "starters_rejected": 2,
+        "correct_implementations_passed": 4,
+        "behavior_mutations_rejected": 16
+      }
+    }
+  },
+  "preserved_rounds": [
+    {
+      "revision": "r1",
+      "planned": 102,
+      "passed": 94
+    },
+    {
+      "revision": "r2",
+      "planned": 103,
+      "passed": 99
+    },
+    {
+      "revision": "r3",
+      "planned": 103,
+      "passed": 103
+    }
+  ],
+  "isolation": {
+    "kind": "isolation-audit-not-effectiveness",
+    "model_calls": 0,
+    "canary_existed_on_host": true,
+    "canary_sha256": "a8ea13334fc84c67c9ca931b21e38a30a2393828a593dff8ff330f55442c8ecf",
+    "checks": {
+      "real_host_canary_unreadable": true,
+      "docker_socket_absent": true,
+      "admin_credentials_absent": true,
+      "peer_database_network_denied": true,
+      "peer_host_ingress_denied": true,
+      "credential_catalog_denied": true,
+      "mounts_only_public": true,
+      "host_canary_unavailable": true,
+      "private_absent": true,
+      "admin_database_denied": true,
+      "external_network_denied": true,
+      "only_public_readonly_mount": true
+    },
+    "passed": true
+  },
+  "artifacts": [
+    {
+      "path": "E:\\loerlum-benchmark\\artifacts\\backend-execution\\calibration-20261103-r1.json",
+      "sha256": "7d3df36ab2ceec447e40ce1da749bd880ff386bad797b39ac09b8fb8c01887bf",
+      "bytes": 946828
+    },
+    {
+      "path": "E:\\loerlum-benchmark\\artifacts\\backend-execution\\calibration-20261103-r2.json",
+      "sha256": "b2506a4ec0f16587c5548ffec1096a2f37b85cba6cfe9604c5a6e88ca6d4e993",
+      "bytes": 995869
+    },
+    {
+      "path": "E:\\loerlum-benchmark\\artifacts\\backend-execution\\calibration-20261103-r3.json",
+      "sha256": "ee9a54dd93a8b387c07c58725c221a691210e606d0fccd7a873344362d675a12",
+      "bytes": 1049350
+    },
+    {
+      "path": "E:\\loerlum-benchmark\\artifacts\\backend-execution\\isolation-20261103-r1.json",
+      "sha256": "f1efcadd89d819eca4214abb19ca94a94d09aae19ae17c13a33a1190be0f6e71",
+      "bytes": 687
+    },
+    {
+      "path": "E:\\loerlum-benchmark\\artifacts\\backend-execution\\isolation-20261103-r3.json",
+      "sha256": "6b0ac82556abc256e8c9558e3a6f03e64b45ca6ccd639b65b8c9c03acc4ae165",
+      "bytes": 687
+    }
+  ],
+  "examples_are": "Author-created calibration implementations, NOT model answers and NOT Practice treatment effects",
+  "examples": [
+    {
+      "task": "event-1",
+      "implementation": "starter",
+      "outcome": {
+        "execution_health": "evaluated",
+        "semantic": "fail",
+        "quality": "not-run",
+        "checks": [
+          {
+            "id": "concurrent-delivery-single-effect",
+            "pass": true,
+            "evidence": [
+              [
+                200,
+                {
+                  "status": "applied"
+                },
+                2
+              ],
+              [
+                200,
+                {
+                  "status": "duplicate"
+                },
+                1
+              ]
+            ]
+          },
+          {
+            "id": "claim-failure-recoverable",
+            "pass": false,
+            "error": "AssertionError: interrupted claim was committed"
+          },
+          {
+            "id": "claim-cancellation-recoverable",
+            "pass": false,
+            "error": "AssertionError: interrupted claim was committed"
+          },
+          {
+            "id": "independent-events-preserved",
+            "pass": true,
+            "evidence": [
+              {
+                "event_id": "independent-a",
+                "amount": 3
+              },
+              {
+                "event_id": "independent-b",
+                "amount": 5
+              }
+            ]
+          },
+          {
+            "id": "effect-storage-failure-recoverable",
+            "pass": false,
+            "error": "AssertionError: failed effect consumed event"
+          }
+        ],
+        "quality_checks": []
+      },
+      "observations": [
+        {
+          "request": {
+            "event": "race",
+            "amount": 7
+          },
+          "http": 200,
+          "body": {
+            "result": {
+              "status": "duplicate"
+            },
+            "queries": 1
+          },
+          "elapsed_seconds": 0.023113000000194006
+        },
+        {
+          "request": {
+            "event": "race",
+            "amount": 7
+          },
+          "http": 200,
+          "body": {
+            "result": {
+              "status": "applied"
+            },
+            "queries": 2
+          },
+          "elapsed_seconds": 0.025166599999920436
+        },
+        {
+          "request": {
+            "event": "interrupted-fault",
+            "amount": 11,
+            "fault": "after_claim"
+          },
+          "http": 500,
+          "body": {
+            "result": {
+              "error": "RuntimeError",
+              "message": "injected interruption: after_claim"
+            },
+            "queries": 1
+          },
+          "elapsed_seconds": 0.028381599999647733
+        },
+        {
+          "request": {
+            "event": "interrupted-cancel",
+            "amount": 11,
+            "cancel": "after_claim"
+          },
+          "http": 500,
+          "body": {
+            "result": {
+              "error": "Cancelled",
+              "message": "request cancelled at after_claim"
+            },
+            "queries": 1
+          },
+          "elapsed_seconds": 0.00804340000013326
+        },
+        {
+          "request": {
+            "event": "independent-a",
+            "amount": 3
+          },
+          "http": 200,
+          "body": {
+            "result": {
+              "status": "applied"
+            },
+            "queries": 2
+          },
+          "elapsed_seconds": 0.009054399999968155
+        },
+        {
+          "request": {
+            "event": "independent-b",
+            "amount": 5
+          },
+          "http": 200,
+          "body": {
+            "result": {
+              "status": "applied"
+            },
+            "queries": 2
+          },
+          "elapsed_seconds": 0.009686299999884795
+        },
+        {
+          "request": {
+            "event": "bad-value",
+            "amount": -1
+          },
+          "http": 500,
+          "body": {
+            "result": {
+              "error": "CheckViolation",
+              "message": "new row for relation \"effects\" violates check constraint \"effects_amount_check\"\nDETAIL:  Failing row contains (4, bad-value, -1)."
+            },
+            "queries": 2
+          },
+          "elapsed_seconds": 0.009724399999868183
+        }
+      ]
+    },
+    {
+      "task": "event-1",
+      "implementation": "reference",
+      "outcome": {
+        "execution_health": "evaluated",
+        "semantic": "pass",
+        "quality": "not-run",
+        "checks": [
+          {
+            "id": "concurrent-delivery-single-effect",
+            "pass": true,
+            "evidence": [
+              [
+                200,
+                {
+                  "status": "duplicate"
+                },
+                1
+              ],
+              [
+                200,
+                {
+                  "status": "applied"
+                },
+                2
+              ]
+            ]
+          },
+          {
+            "id": "claim-failure-recoverable",
+            "pass": true,
+            "evidence": {
+              "interruption": {
+                "error": "RuntimeError",
+                "message": "injected interruption: after_claim"
+              },
+              "retry": {
+                "status": "applied"
+              },
+              "redelivery": {
+                "status": "duplicate"
+              }
+            }
+          },
+          {
+            "id": "claim-cancellation-recoverable",
+            "pass": true,
+            "evidence": {
+              "interruption": {
+                "error": "Cancelled",
+                "message": "request cancelled at after_claim"
+              },
+              "retry": {
+                "status": "applied"
+              },
+              "redelivery": {
+                "status": "duplicate"
+              }
+            }
+          },
+          {
+            "id": "independent-events-preserved",
+            "pass": true,
+            "evidence": [
+              {
+                "event_id": "independent-a",
+                "amount": 3
+              },
+              {
+                "event_id": "independent-b",
+                "amount": 5
+              }
+            ]
+          },
+          {
+            "id": "effect-storage-failure-recoverable",
+            "pass": true,
+            "evidence": {
+              "status": "applied"
+            }
+          }
+        ],
+        "quality_checks": []
+      },
+      "observations": [
+        {
+          "request": {
+            "event": "race",
+            "amount": 7
+          },
+          "http": 200,
+          "body": {
+            "result": {
+              "status": "applied"
+            },
+            "queries": 2
+          },
+          "elapsed_seconds": 0.03708169999981692
+        },
+        {
+          "request": {
+            "event": "race",
+            "amount": 7
+          },
+          "http": 200,
+          "body": {
+            "result": {
+              "status": "duplicate"
+            },
+            "queries": 1
+          },
+          "elapsed_seconds": 0.03784270000005563
+        },
+        {
+          "request": {
+            "event": "interrupted-fault",
+            "amount": 11,
+            "fault": "after_claim"
+          },
+          "http": 500,
+          "body": {
+            "result": {
+              "error": "RuntimeError",
+              "message": "injected interruption: after_claim"
+            },
+            "queries": 1
+          },
+          "elapsed_seconds": 0.00794690000020637
+        },
+        {
+          "request": {
+            "event": "interrupted-fault",
+            "amount": 11
+          },
+          "http": 200,
+          "body": {
+            "result": {
+              "status": "applied"
+            },
+            "queries": 2
+          },
+          "elapsed_seconds": 0.008707800000138377
+        },
+        {
+          "request": {
+            "event": "interrupted-fault",
+            "amount": 11
+          },
+          "http": 200,
+          "body": {
+            "result": {
+              "status": "duplicate"
+            },
+            "queries": 1
+          },
+          "elapsed_seconds": 0.007112300000244431
+        },
+        {
+          "request": {
+            "event": "interrupted-cancel",
+            "amount": 11,
+            "cancel": "after_claim"
+          },
+          "http": 500,
+          "body": {
+            "result": {
+              "error": "Cancelled",
+              "message": "request cancelled at after_claim"
+            },
+            "queries": 1
+          },
+          "elapsed_seconds": 0.006269299999985378
+        },
+        {
+          "request": {
+            "event": "interrupted-cancel",
+            "amount": 11
+          },
+          "http": 200,
+          "body": {
+            "result": {
+              "status": "applied"
+            },
+            "queries": 2
+          },
+          "elapsed_seconds": 0.006367299999965326
+        },
+        {
+          "request": {
+            "event": "interrupted-cancel",
+            "amount": 11
+          },
+          "http": 200,
+          "body": {
+            "result": {
+              "status": "duplicate"
+            },
+            "queries": 1
+          },
+          "elapsed_seconds": 0.005414600000221981
+        },
+        {
+          "request": {
+            "event": "independent-a",
+            "amount": 3
+          },
+          "http": 200,
+          "body": {
+            "result": {
+              "status": "applied"
+            },
+            "queries": 2
+          },
+          "elapsed_seconds": 0.00682539999979781
+        },
+        {
+          "request": {
+            "event": "independent-b",
+            "amount": 5
+          },
+          "http": 200,
+          "body": {
+            "result": {
+              "status": "applied"
+            },
+            "queries": 2
+          },
+          "elapsed_seconds": 0.006863700000394601
+        },
+        {
+          "request": {
+            "event": "bad-value",
+            "amount": -1
+          },
+          "http": 500,
+          "body": {
+            "result": {
+              "error": "CheckViolation",
+              "message": "new row for relation \"effects\" violates check constraint \"effects_amount_check\"\nDETAIL:  Failing row contains (6, bad-value, -1)."
+            },
+            "queries": 2
+          },
+          "elapsed_seconds": 0.0061838000001444016
+        },
+        {
+          "request": {
+            "event": "bad-value",
+            "amount": 13
+          },
+          "http": 200,
+          "body": {
+            "result": {
+              "status": "applied"
+            },
+            "queries": 2
+          },
+          "elapsed_seconds": 0.011210799999844312
+        }
+      ]
+    },
+    {
+      "task": "relations-2",
+      "implementation": "reference",
+      "outcome": {
+        "execution_health": "evaluated",
+        "semantic": "pass",
+        "quality": "observed",
+        "checks": [
+          {
+            "id": "complete-ordered-tenant-overview",
+            "pass": true,
+            "evidence": {
+              "response": {
+                "projects": [
+                  {
+                    "id": 1,
+                    "name": "project-1",
+                    "children": [
+                      {
+                        "id": 101,
+                        "project_id": 1,
+                        "position": 1,
+                        "title": "child-1-1"
+                      },
+                      {
+                        "id": 102,
+                        "project_id": 1,
+                        "position": 2,
+                        "title": "child-1-2"
+                      }
+                    ],
+                    "next": 2
+                  },
+                  {
+                    "id": 2,
+                    "name": "project-2",
+                    "children": [
+                      {
+                        "id": 201,
+                        "project_id": 2,
+                        "position": 1,
+                        "title": "child-2-1"
+                      },
+                      {
+                        "id": 202,
+                        "project_id": 2,
+                        "position": 2,
+                        "title": "child-2-2"
+                      }
+                    ],
+                    "next": 2
+                  },
+                  {
+                    "id": 3,
+                    "name": "project-3",
+                    "children": [
+                      {
+                        "id": 301,
+                        "project_id": 3,
+                        "position": 1,
+                        "title": "child-3-1"
+                      },
+                      {
+                        "id": 302,
+                        "project_id": 3,
+                        "position": 2,
+                        "title": "child-3-2"
+                      }
+                    ],
+                    "next": 2
+                  },
+                  {
+                    "id": 4,
+                    "name": "project-4",
+                    "children": [
+                      {
+                        "id": 401,
+                        "project_id": 4,
+                        "position": 1,
+                        "title": "child-4-1"
+                      },
+                      {
+                        "id": 402,
+                        "project_id": 4,
+                        "position": 2,
+                        "title": "child-4-2"
+                      }
+                    ],
+                    "next": 2
+                  },
+                  {
+                    "id": 5,
+                    "name": "project-5",
+                    "children": [
+                      {
+                        "id": 501,
+                        "project_id": 5,
+                        "position": 1,
+                        "title": "child-5-1"
+                      },
+                      {
+                        "id": 502,
+                        "project_id": 5,
+                        "position": 2,
+                        "title": "child-5-2"
+                      }
+                    ],
+                    "next": 2
+                  },
+                  {
+                    "id": 6,
+                    "name": "project-6",
+                    "children": [],
+                    "next": null
+                  }
+                ]
+              },
+              "queries": 2
+            }
+          },
+          {
+            "id": "public-query-roundtrip-slo",
+            "pass": true,
+            "evidence": {
+              "queries": 2
+            }
+          },
+          {
+            "id": "empty-tenant-no-leak",
+            "pass": true,
+            "evidence": {
+              "projects": []
+            }
+          },
+          {
+            "id": "lossless-child-continuation",
+            "pass": true,
+            "evidence": [
+              {
+                "id": 101,
+                "project_id": 1,
+                "position": 1,
+                "title": "child-1-1"
+              },
+              {
+                "id": 102,
+                "project_id": 1,
+                "position": 2,
+                "title": "child-1-2"
+              },
+              {
+                "id": 103,
+                "project_id": 1,
+                "position": 3,
+                "title": "child-1-3"
+              },
+              {
+                "id": 104,
+                "project_id": 1,
+                "position": 4,
+                "title": "child-1-4"
+              },
+              {
+                "id": 105,
+                "project_id": 1,
+                "position": 5,
+                "title": "child-1-5"
+              }
+            ]
+          }
+        ],
+        "quality_checks": [
+          {
+            "id": "bounded-child-materialization",
+            "observed": true,
+            "evidence": {
+              "database_rows_returned": 21,
+              "parent_count": 6,
+              "policy": "at most one parent plus a three-child lookahead per project; soft observation only"
+            }
+          }
+        ]
+      },
+      "observations": [
+        {
+          "request": {
+            "tenant": "alpha"
+          },
+          "http": 200,
+          "body": {
+            "result": {
+              "projects": [
+                {
+                  "id": 1,
+                  "name": "project-1",
+                  "children": [
+                    {
+                      "id": 101,
+                      "project_id": 1,
+                      "position": 1,
+                      "title": "child-1-1"
+                    },
+                    {
+                      "id": 102,
+                      "project_id": 1,
+                      "position": 2,
+                      "title": "child-1-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 2,
+                  "name": "project-2",
+                  "children": [
+                    {
+                      "id": 201,
+                      "project_id": 2,
+                      "position": 1,
+                      "title": "child-2-1"
+                    },
+                    {
+                      "id": 202,
+                      "project_id": 2,
+                      "position": 2,
+                      "title": "child-2-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 3,
+                  "name": "project-3",
+                  "children": [
+                    {
+                      "id": 301,
+                      "project_id": 3,
+                      "position": 1,
+                      "title": "child-3-1"
+                    },
+                    {
+                      "id": 302,
+                      "project_id": 3,
+                      "position": 2,
+                      "title": "child-3-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 4,
+                  "name": "project-4",
+                  "children": [
+                    {
+                      "id": 401,
+                      "project_id": 4,
+                      "position": 1,
+                      "title": "child-4-1"
+                    },
+                    {
+                      "id": 402,
+                      "project_id": 4,
+                      "position": 2,
+                      "title": "child-4-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 5,
+                  "name": "project-5",
+                  "children": [
+                    {
+                      "id": 501,
+                      "project_id": 5,
+                      "position": 1,
+                      "title": "child-5-1"
+                    },
+                    {
+                      "id": 502,
+                      "project_id": 5,
+                      "position": 2,
+                      "title": "child-5-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 6,
+                  "name": "project-6",
+                  "children": [],
+                  "next": null
+                }
+              ]
+            },
+            "queries": 2
+          },
+          "elapsed_seconds": 0.010987500000283035
+        },
+        {
+          "request": {
+            "tenant": "alpha"
+          },
+          "http": 200,
+          "body": {
+            "result": {
+              "projects": [
+                {
+                  "id": 1,
+                  "name": "project-1",
+                  "children": [
+                    {
+                      "id": 101,
+                      "project_id": 1,
+                      "position": 1,
+                      "title": "child-1-1"
+                    },
+                    {
+                      "id": 102,
+                      "project_id": 1,
+                      "position": 2,
+                      "title": "child-1-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 2,
+                  "name": "project-2",
+                  "children": [
+                    {
+                      "id": 201,
+                      "project_id": 2,
+                      "position": 1,
+                      "title": "child-2-1"
+                    },
+                    {
+                      "id": 202,
+                      "project_id": 2,
+                      "position": 2,
+                      "title": "child-2-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 3,
+                  "name": "project-3",
+                  "children": [
+                    {
+                      "id": 301,
+                      "project_id": 3,
+                      "position": 1,
+                      "title": "child-3-1"
+                    },
+                    {
+                      "id": 302,
+                      "project_id": 3,
+                      "position": 2,
+                      "title": "child-3-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 4,
+                  "name": "project-4",
+                  "children": [
+                    {
+                      "id": 401,
+                      "project_id": 4,
+                      "position": 1,
+                      "title": "child-4-1"
+                    },
+                    {
+                      "id": 402,
+                      "project_id": 4,
+                      "position": 2,
+                      "title": "child-4-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 5,
+                  "name": "project-5",
+                  "children": [
+                    {
+                      "id": 501,
+                      "project_id": 5,
+                      "position": 1,
+                      "title": "child-5-1"
+                    },
+                    {
+                      "id": 502,
+                      "project_id": 5,
+                      "position": 2,
+                      "title": "child-5-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 6,
+                  "name": "project-6",
+                  "children": [],
+                  "next": null
+                }
+              ]
+            },
+            "queries": 2
+          },
+          "elapsed_seconds": 0.010943000000224856
+        },
+        {
+          "request": {
+            "tenant": "nobody"
+          },
+          "http": 200,
+          "body": {
+            "result": {
+              "projects": []
+            },
+            "queries": 2
+          },
+          "elapsed_seconds": 0.008459499999844411
+        },
+        {
+          "request": {
+            "tenant": "alpha",
+            "after": {}
+          },
+          "http": 200,
+          "body": {
+            "result": {
+              "projects": [
+                {
+                  "id": 1,
+                  "name": "project-1",
+                  "children": [
+                    {
+                      "id": 101,
+                      "project_id": 1,
+                      "position": 1,
+                      "title": "child-1-1"
+                    },
+                    {
+                      "id": 102,
+                      "project_id": 1,
+                      "position": 2,
+                      "title": "child-1-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 2,
+                  "name": "project-2",
+                  "children": [
+                    {
+                      "id": 201,
+                      "project_id": 2,
+                      "position": 1,
+                      "title": "child-2-1"
+                    },
+                    {
+                      "id": 202,
+                      "project_id": 2,
+                      "position": 2,
+                      "title": "child-2-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 3,
+                  "name": "project-3",
+                  "children": [
+                    {
+                      "id": 301,
+                      "project_id": 3,
+                      "position": 1,
+                      "title": "child-3-1"
+                    },
+                    {
+                      "id": 302,
+                      "project_id": 3,
+                      "position": 2,
+                      "title": "child-3-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 4,
+                  "name": "project-4",
+                  "children": [
+                    {
+                      "id": 401,
+                      "project_id": 4,
+                      "position": 1,
+                      "title": "child-4-1"
+                    },
+                    {
+                      "id": 402,
+                      "project_id": 4,
+                      "position": 2,
+                      "title": "child-4-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 5,
+                  "name": "project-5",
+                  "children": [
+                    {
+                      "id": 501,
+                      "project_id": 5,
+                      "position": 1,
+                      "title": "child-5-1"
+                    },
+                    {
+                      "id": 502,
+                      "project_id": 5,
+                      "position": 2,
+                      "title": "child-5-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 6,
+                  "name": "project-6",
+                  "children": [],
+                  "next": null
+                }
+              ]
+            },
+            "queries": 2
+          },
+          "elapsed_seconds": 0.008721599999717
+        },
+        {
+          "request": {
+            "tenant": "alpha",
+            "after": {
+              "1": 2
+            }
+          },
+          "http": 200,
+          "body": {
+            "result": {
+              "projects": [
+                {
+                  "id": 1,
+                  "name": "project-1",
+                  "children": [
+                    {
+                      "id": 103,
+                      "project_id": 1,
+                      "position": 3,
+                      "title": "child-1-3"
+                    },
+                    {
+                      "id": 104,
+                      "project_id": 1,
+                      "position": 4,
+                      "title": "child-1-4"
+                    }
+                  ],
+                  "next": 4
+                },
+                {
+                  "id": 2,
+                  "name": "project-2",
+                  "children": [
+                    {
+                      "id": 201,
+                      "project_id": 2,
+                      "position": 1,
+                      "title": "child-2-1"
+                    },
+                    {
+                      "id": 202,
+                      "project_id": 2,
+                      "position": 2,
+                      "title": "child-2-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 3,
+                  "name": "project-3",
+                  "children": [
+                    {
+                      "id": 301,
+                      "project_id": 3,
+                      "position": 1,
+                      "title": "child-3-1"
+                    },
+                    {
+                      "id": 302,
+                      "project_id": 3,
+                      "position": 2,
+                      "title": "child-3-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 4,
+                  "name": "project-4",
+                  "children": [
+                    {
+                      "id": 401,
+                      "project_id": 4,
+                      "position": 1,
+                      "title": "child-4-1"
+                    },
+                    {
+                      "id": 402,
+                      "project_id": 4,
+                      "position": 2,
+                      "title": "child-4-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 5,
+                  "name": "project-5",
+                  "children": [
+                    {
+                      "id": 501,
+                      "project_id": 5,
+                      "position": 1,
+                      "title": "child-5-1"
+                    },
+                    {
+                      "id": 502,
+                      "project_id": 5,
+                      "position": 2,
+                      "title": "child-5-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 6,
+                  "name": "project-6",
+                  "children": [],
+                  "next": null
+                }
+              ]
+            },
+            "queries": 2
+          },
+          "elapsed_seconds": 0.007813000000169268
+        },
+        {
+          "request": {
+            "tenant": "alpha",
+            "after": {
+              "1": 4
+            }
+          },
+          "http": 200,
+          "body": {
+            "result": {
+              "projects": [
+                {
+                  "id": 1,
+                  "name": "project-1",
+                  "children": [
+                    {
+                      "id": 105,
+                      "project_id": 1,
+                      "position": 5,
+                      "title": "child-1-5"
+                    }
+                  ],
+                  "next": null
+                },
+                {
+                  "id": 2,
+                  "name": "project-2",
+                  "children": [
+                    {
+                      "id": 201,
+                      "project_id": 2,
+                      "position": 1,
+                      "title": "child-2-1"
+                    },
+                    {
+                      "id": 202,
+                      "project_id": 2,
+                      "position": 2,
+                      "title": "child-2-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 3,
+                  "name": "project-3",
+                  "children": [
+                    {
+                      "id": 301,
+                      "project_id": 3,
+                      "position": 1,
+                      "title": "child-3-1"
+                    },
+                    {
+                      "id": 302,
+                      "project_id": 3,
+                      "position": 2,
+                      "title": "child-3-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 4,
+                  "name": "project-4",
+                  "children": [
+                    {
+                      "id": 401,
+                      "project_id": 4,
+                      "position": 1,
+                      "title": "child-4-1"
+                    },
+                    {
+                      "id": 402,
+                      "project_id": 4,
+                      "position": 2,
+                      "title": "child-4-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 5,
+                  "name": "project-5",
+                  "children": [
+                    {
+                      "id": 501,
+                      "project_id": 5,
+                      "position": 1,
+                      "title": "child-5-1"
+                    },
+                    {
+                      "id": 502,
+                      "project_id": 5,
+                      "position": 2,
+                      "title": "child-5-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 6,
+                  "name": "project-6",
+                  "children": [],
+                  "next": null
+                }
+              ]
+            },
+            "queries": 2
+          },
+          "elapsed_seconds": 0.008405600000060076
+        },
+        {
+          "request": {
+            "tenant": "alpha"
+          },
+          "http": 200,
+          "body": {
+            "result": {
+              "projects": [
+                {
+                  "id": 1,
+                  "name": "project-1",
+                  "children": [
+                    {
+                      "id": 101,
+                      "project_id": 1,
+                      "position": 1,
+                      "title": "child-1-1"
+                    },
+                    {
+                      "id": 102,
+                      "project_id": 1,
+                      "position": 2,
+                      "title": "child-1-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 2,
+                  "name": "project-2",
+                  "children": [
+                    {
+                      "id": 201,
+                      "project_id": 2,
+                      "position": 1,
+                      "title": "child-2-1"
+                    },
+                    {
+                      "id": 202,
+                      "project_id": 2,
+                      "position": 2,
+                      "title": "child-2-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 3,
+                  "name": "project-3",
+                  "children": [
+                    {
+                      "id": 301,
+                      "project_id": 3,
+                      "position": 1,
+                      "title": "child-3-1"
+                    },
+                    {
+                      "id": 302,
+                      "project_id": 3,
+                      "position": 2,
+                      "title": "child-3-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 4,
+                  "name": "project-4",
+                  "children": [
+                    {
+                      "id": 401,
+                      "project_id": 4,
+                      "position": 1,
+                      "title": "child-4-1"
+                    },
+                    {
+                      "id": 402,
+                      "project_id": 4,
+                      "position": 2,
+                      "title": "child-4-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 5,
+                  "name": "project-5",
+                  "children": [
+                    {
+                      "id": 501,
+                      "project_id": 5,
+                      "position": 1,
+                      "title": "child-5-1"
+                    },
+                    {
+                      "id": 502,
+                      "project_id": 5,
+                      "position": 2,
+                      "title": "child-5-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 6,
+                  "name": "project-6",
+                  "children": [],
+                  "next": null
+                }
+              ]
+            },
+            "queries": 2
+          },
+          "elapsed_seconds": 0.008052000000134285
+        }
+      ]
+    },
+    {
+      "task": "relations-2",
+      "implementation": "mutation-unbounded-child-materialization",
+      "outcome": {
+        "execution_health": "evaluated",
+        "semantic": "pass",
+        "quality": "not-observed",
+        "checks": [
+          {
+            "id": "complete-ordered-tenant-overview",
+            "pass": true,
+            "evidence": {
+              "response": {
+                "projects": [
+                  {
+                    "id": 1,
+                    "name": "project-1",
+                    "children": [
+                      {
+                        "id": 101,
+                        "project_id": 1,
+                        "position": 1,
+                        "title": "child-1-1"
+                      },
+                      {
+                        "id": 102,
+                        "project_id": 1,
+                        "position": 2,
+                        "title": "child-1-2"
+                      }
+                    ],
+                    "next": 2
+                  },
+                  {
+                    "id": 2,
+                    "name": "project-2",
+                    "children": [
+                      {
+                        "id": 201,
+                        "project_id": 2,
+                        "position": 1,
+                        "title": "child-2-1"
+                      },
+                      {
+                        "id": 202,
+                        "project_id": 2,
+                        "position": 2,
+                        "title": "child-2-2"
+                      }
+                    ],
+                    "next": 2
+                  },
+                  {
+                    "id": 3,
+                    "name": "project-3",
+                    "children": [
+                      {
+                        "id": 301,
+                        "project_id": 3,
+                        "position": 1,
+                        "title": "child-3-1"
+                      },
+                      {
+                        "id": 302,
+                        "project_id": 3,
+                        "position": 2,
+                        "title": "child-3-2"
+                      }
+                    ],
+                    "next": 2
+                  },
+                  {
+                    "id": 4,
+                    "name": "project-4",
+                    "children": [
+                      {
+                        "id": 401,
+                        "project_id": 4,
+                        "position": 1,
+                        "title": "child-4-1"
+                      },
+                      {
+                        "id": 402,
+                        "project_id": 4,
+                        "position": 2,
+                        "title": "child-4-2"
+                      }
+                    ],
+                    "next": 2
+                  },
+                  {
+                    "id": 5,
+                    "name": "project-5",
+                    "children": [
+                      {
+                        "id": 501,
+                        "project_id": 5,
+                        "position": 1,
+                        "title": "child-5-1"
+                      },
+                      {
+                        "id": 502,
+                        "project_id": 5,
+                        "position": 2,
+                        "title": "child-5-2"
+                      }
+                    ],
+                    "next": 2
+                  },
+                  {
+                    "id": 6,
+                    "name": "project-6",
+                    "children": [],
+                    "next": null
+                  }
+                ]
+              },
+              "queries": 2
+            }
+          },
+          {
+            "id": "public-query-roundtrip-slo",
+            "pass": true,
+            "evidence": {
+              "queries": 2
+            }
+          },
+          {
+            "id": "empty-tenant-no-leak",
+            "pass": true,
+            "evidence": {
+              "projects": []
+            }
+          },
+          {
+            "id": "lossless-child-continuation",
+            "pass": true,
+            "evidence": [
+              {
+                "id": 101,
+                "project_id": 1,
+                "position": 1,
+                "title": "child-1-1"
+              },
+              {
+                "id": 102,
+                "project_id": 1,
+                "position": 2,
+                "title": "child-1-2"
+              },
+              {
+                "id": 103,
+                "project_id": 1,
+                "position": 3,
+                "title": "child-1-3"
+              },
+              {
+                "id": 104,
+                "project_id": 1,
+                "position": 4,
+                "title": "child-1-4"
+              },
+              {
+                "id": 105,
+                "project_id": 1,
+                "position": 5,
+                "title": "child-1-5"
+              }
+            ]
+          }
+        ],
+        "quality_checks": [
+          {
+            "id": "bounded-child-materialization",
+            "observed": false,
+            "evidence": {
+              "database_rows_returned": 31,
+              "parent_count": 6,
+              "policy": "at most one parent plus a three-child lookahead per project; soft observation only"
+            }
+          }
+        ]
+      },
+      "observations": [
+        {
+          "request": {
+            "tenant": "alpha"
+          },
+          "http": 200,
+          "body": {
+            "result": {
+              "projects": [
+                {
+                  "id": 1,
+                  "name": "project-1",
+                  "children": [
+                    {
+                      "id": 101,
+                      "project_id": 1,
+                      "position": 1,
+                      "title": "child-1-1"
+                    },
+                    {
+                      "id": 102,
+                      "project_id": 1,
+                      "position": 2,
+                      "title": "child-1-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 2,
+                  "name": "project-2",
+                  "children": [
+                    {
+                      "id": 201,
+                      "project_id": 2,
+                      "position": 1,
+                      "title": "child-2-1"
+                    },
+                    {
+                      "id": 202,
+                      "project_id": 2,
+                      "position": 2,
+                      "title": "child-2-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 3,
+                  "name": "project-3",
+                  "children": [
+                    {
+                      "id": 301,
+                      "project_id": 3,
+                      "position": 1,
+                      "title": "child-3-1"
+                    },
+                    {
+                      "id": 302,
+                      "project_id": 3,
+                      "position": 2,
+                      "title": "child-3-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 4,
+                  "name": "project-4",
+                  "children": [
+                    {
+                      "id": 401,
+                      "project_id": 4,
+                      "position": 1,
+                      "title": "child-4-1"
+                    },
+                    {
+                      "id": 402,
+                      "project_id": 4,
+                      "position": 2,
+                      "title": "child-4-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 5,
+                  "name": "project-5",
+                  "children": [
+                    {
+                      "id": 501,
+                      "project_id": 5,
+                      "position": 1,
+                      "title": "child-5-1"
+                    },
+                    {
+                      "id": 502,
+                      "project_id": 5,
+                      "position": 2,
+                      "title": "child-5-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 6,
+                  "name": "project-6",
+                  "children": [],
+                  "next": null
+                }
+              ]
+            },
+            "queries": 2
+          },
+          "elapsed_seconds": 0.009321099999851867
+        },
+        {
+          "request": {
+            "tenant": "alpha"
+          },
+          "http": 200,
+          "body": {
+            "result": {
+              "projects": [
+                {
+                  "id": 1,
+                  "name": "project-1",
+                  "children": [
+                    {
+                      "id": 101,
+                      "project_id": 1,
+                      "position": 1,
+                      "title": "child-1-1"
+                    },
+                    {
+                      "id": 102,
+                      "project_id": 1,
+                      "position": 2,
+                      "title": "child-1-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 2,
+                  "name": "project-2",
+                  "children": [
+                    {
+                      "id": 201,
+                      "project_id": 2,
+                      "position": 1,
+                      "title": "child-2-1"
+                    },
+                    {
+                      "id": 202,
+                      "project_id": 2,
+                      "position": 2,
+                      "title": "child-2-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 3,
+                  "name": "project-3",
+                  "children": [
+                    {
+                      "id": 301,
+                      "project_id": 3,
+                      "position": 1,
+                      "title": "child-3-1"
+                    },
+                    {
+                      "id": 302,
+                      "project_id": 3,
+                      "position": 2,
+                      "title": "child-3-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 4,
+                  "name": "project-4",
+                  "children": [
+                    {
+                      "id": 401,
+                      "project_id": 4,
+                      "position": 1,
+                      "title": "child-4-1"
+                    },
+                    {
+                      "id": 402,
+                      "project_id": 4,
+                      "position": 2,
+                      "title": "child-4-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 5,
+                  "name": "project-5",
+                  "children": [
+                    {
+                      "id": 501,
+                      "project_id": 5,
+                      "position": 1,
+                      "title": "child-5-1"
+                    },
+                    {
+                      "id": 502,
+                      "project_id": 5,
+                      "position": 2,
+                      "title": "child-5-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 6,
+                  "name": "project-6",
+                  "children": [],
+                  "next": null
+                }
+              ]
+            },
+            "queries": 2
+          },
+          "elapsed_seconds": 0.01142100000015489
+        },
+        {
+          "request": {
+            "tenant": "nobody"
+          },
+          "http": 200,
+          "body": {
+            "result": {
+              "projects": []
+            },
+            "queries": 2
+          },
+          "elapsed_seconds": 0.024346700000023702
+        },
+        {
+          "request": {
+            "tenant": "alpha",
+            "after": {}
+          },
+          "http": 200,
+          "body": {
+            "result": {
+              "projects": [
+                {
+                  "id": 1,
+                  "name": "project-1",
+                  "children": [
+                    {
+                      "id": 101,
+                      "project_id": 1,
+                      "position": 1,
+                      "title": "child-1-1"
+                    },
+                    {
+                      "id": 102,
+                      "project_id": 1,
+                      "position": 2,
+                      "title": "child-1-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 2,
+                  "name": "project-2",
+                  "children": [
+                    {
+                      "id": 201,
+                      "project_id": 2,
+                      "position": 1,
+                      "title": "child-2-1"
+                    },
+                    {
+                      "id": 202,
+                      "project_id": 2,
+                      "position": 2,
+                      "title": "child-2-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 3,
+                  "name": "project-3",
+                  "children": [
+                    {
+                      "id": 301,
+                      "project_id": 3,
+                      "position": 1,
+                      "title": "child-3-1"
+                    },
+                    {
+                      "id": 302,
+                      "project_id": 3,
+                      "position": 2,
+                      "title": "child-3-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 4,
+                  "name": "project-4",
+                  "children": [
+                    {
+                      "id": 401,
+                      "project_id": 4,
+                      "position": 1,
+                      "title": "child-4-1"
+                    },
+                    {
+                      "id": 402,
+                      "project_id": 4,
+                      "position": 2,
+                      "title": "child-4-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 5,
+                  "name": "project-5",
+                  "children": [
+                    {
+                      "id": 501,
+                      "project_id": 5,
+                      "position": 1,
+                      "title": "child-5-1"
+                    },
+                    {
+                      "id": 502,
+                      "project_id": 5,
+                      "position": 2,
+                      "title": "child-5-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 6,
+                  "name": "project-6",
+                  "children": [],
+                  "next": null
+                }
+              ]
+            },
+            "queries": 2
+          },
+          "elapsed_seconds": 0.010643399999935355
+        },
+        {
+          "request": {
+            "tenant": "alpha",
+            "after": {
+              "1": 2
+            }
+          },
+          "http": 200,
+          "body": {
+            "result": {
+              "projects": [
+                {
+                  "id": 1,
+                  "name": "project-1",
+                  "children": [
+                    {
+                      "id": 103,
+                      "project_id": 1,
+                      "position": 3,
+                      "title": "child-1-3"
+                    },
+                    {
+                      "id": 104,
+                      "project_id": 1,
+                      "position": 4,
+                      "title": "child-1-4"
+                    }
+                  ],
+                  "next": 4
+                },
+                {
+                  "id": 2,
+                  "name": "project-2",
+                  "children": [
+                    {
+                      "id": 201,
+                      "project_id": 2,
+                      "position": 1,
+                      "title": "child-2-1"
+                    },
+                    {
+                      "id": 202,
+                      "project_id": 2,
+                      "position": 2,
+                      "title": "child-2-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 3,
+                  "name": "project-3",
+                  "children": [
+                    {
+                      "id": 301,
+                      "project_id": 3,
+                      "position": 1,
+                      "title": "child-3-1"
+                    },
+                    {
+                      "id": 302,
+                      "project_id": 3,
+                      "position": 2,
+                      "title": "child-3-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 4,
+                  "name": "project-4",
+                  "children": [
+                    {
+                      "id": 401,
+                      "project_id": 4,
+                      "position": 1,
+                      "title": "child-4-1"
+                    },
+                    {
+                      "id": 402,
+                      "project_id": 4,
+                      "position": 2,
+                      "title": "child-4-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 5,
+                  "name": "project-5",
+                  "children": [
+                    {
+                      "id": 501,
+                      "project_id": 5,
+                      "position": 1,
+                      "title": "child-5-1"
+                    },
+                    {
+                      "id": 502,
+                      "project_id": 5,
+                      "position": 2,
+                      "title": "child-5-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 6,
+                  "name": "project-6",
+                  "children": [],
+                  "next": null
+                }
+              ]
+            },
+            "queries": 2
+          },
+          "elapsed_seconds": 0.008167100000264327
+        },
+        {
+          "request": {
+            "tenant": "alpha",
+            "after": {
+              "1": 4
+            }
+          },
+          "http": 200,
+          "body": {
+            "result": {
+              "projects": [
+                {
+                  "id": 1,
+                  "name": "project-1",
+                  "children": [
+                    {
+                      "id": 105,
+                      "project_id": 1,
+                      "position": 5,
+                      "title": "child-1-5"
+                    }
+                  ],
+                  "next": null
+                },
+                {
+                  "id": 2,
+                  "name": "project-2",
+                  "children": [
+                    {
+                      "id": 201,
+                      "project_id": 2,
+                      "position": 1,
+                      "title": "child-2-1"
+                    },
+                    {
+                      "id": 202,
+                      "project_id": 2,
+                      "position": 2,
+                      "title": "child-2-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 3,
+                  "name": "project-3",
+                  "children": [
+                    {
+                      "id": 301,
+                      "project_id": 3,
+                      "position": 1,
+                      "title": "child-3-1"
+                    },
+                    {
+                      "id": 302,
+                      "project_id": 3,
+                      "position": 2,
+                      "title": "child-3-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 4,
+                  "name": "project-4",
+                  "children": [
+                    {
+                      "id": 401,
+                      "project_id": 4,
+                      "position": 1,
+                      "title": "child-4-1"
+                    },
+                    {
+                      "id": 402,
+                      "project_id": 4,
+                      "position": 2,
+                      "title": "child-4-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 5,
+                  "name": "project-5",
+                  "children": [
+                    {
+                      "id": 501,
+                      "project_id": 5,
+                      "position": 1,
+                      "title": "child-5-1"
+                    },
+                    {
+                      "id": 502,
+                      "project_id": 5,
+                      "position": 2,
+                      "title": "child-5-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 6,
+                  "name": "project-6",
+                  "children": [],
+                  "next": null
+                }
+              ]
+            },
+            "queries": 2
+          },
+          "elapsed_seconds": 0.007898700000168901
+        },
+        {
+          "request": {
+            "tenant": "alpha"
+          },
+          "http": 200,
+          "body": {
+            "result": {
+              "projects": [
+                {
+                  "id": 1,
+                  "name": "project-1",
+                  "children": [
+                    {
+                      "id": 101,
+                      "project_id": 1,
+                      "position": 1,
+                      "title": "child-1-1"
+                    },
+                    {
+                      "id": 102,
+                      "project_id": 1,
+                      "position": 2,
+                      "title": "child-1-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 2,
+                  "name": "project-2",
+                  "children": [
+                    {
+                      "id": 201,
+                      "project_id": 2,
+                      "position": 1,
+                      "title": "child-2-1"
+                    },
+                    {
+                      "id": 202,
+                      "project_id": 2,
+                      "position": 2,
+                      "title": "child-2-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 3,
+                  "name": "project-3",
+                  "children": [
+                    {
+                      "id": 301,
+                      "project_id": 3,
+                      "position": 1,
+                      "title": "child-3-1"
+                    },
+                    {
+                      "id": 302,
+                      "project_id": 3,
+                      "position": 2,
+                      "title": "child-3-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 4,
+                  "name": "project-4",
+                  "children": [
+                    {
+                      "id": 401,
+                      "project_id": 4,
+                      "position": 1,
+                      "title": "child-4-1"
+                    },
+                    {
+                      "id": 402,
+                      "project_id": 4,
+                      "position": 2,
+                      "title": "child-4-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 5,
+                  "name": "project-5",
+                  "children": [
+                    {
+                      "id": 501,
+                      "project_id": 5,
+                      "position": 1,
+                      "title": "child-5-1"
+                    },
+                    {
+                      "id": 502,
+                      "project_id": 5,
+                      "position": 2,
+                      "title": "child-5-2"
+                    }
+                  ],
+                  "next": 2
+                },
+                {
+                  "id": 6,
+                  "name": "project-6",
+                  "children": [],
+                  "next": null
+                }
+              ]
+            },
+            "queries": 2
+          },
+          "elapsed_seconds": 0.0071873000001687615
+        }
+      ]
+    }
+  ],
+  "effectiveness": {
+    "planned_denominator": 144,
+    "performed_attempts": 0,
+    "paired_model_examples_available": false,
+    "only_authorized_model": "muse-spark-1.3",
+    "blocker": "All three configured service groups lack a usable Muse route; semantic embedding authorization and coding-session delivery remain unverified",
+    "other_models_called": false
+  },
+  "review_status": "Draft PR; independent model reviews not performed because no other model is authorized and Muse is unavailable"
+}

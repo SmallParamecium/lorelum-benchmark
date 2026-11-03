@@ -1,0 +1,1 @@
+CREATE TABLE profiles(id integer PRIMARY KEY,legacy_name text NOT NULL,display_name text); CREATE TABLE consumers(name text PRIMARY KEY,active boolean NOT NULL,version integer NOT NULL); CREATE TABLE migration_settings(rollback_required boolean NOT NULL);
